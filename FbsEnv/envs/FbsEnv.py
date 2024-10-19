@@ -6,17 +6,42 @@ from matplotlib import pyplot as plt
 from matplotlib import patches
 import numpy as np
 import logging
+import colorlog
 import FbsEnv.utils.FBSUtil as FBSUtil
 
-
+# 设置中文
 plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
 plt.rcParams["axes.unicode_minus"] = False  # 正常显示负号
+# 设置日志
+# Create a color formatter
+formatter = colorlog.ColoredFormatter(
+    "%(log_color)s%(asctime)s - %(levelname)s - %(message)s",
+    datefmt=None,
+    reset=True,
+    log_colors={
+        "DEBUG": "cyan",
+        "INFO": "green",
+        "WARNING": "yellow",
+        "ERROR": "red",
+        "CRITICAL": "bold_red",
+    },
+)
+
+# Set up the handler
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
+# Configure the root logger
+logger = logging.getLogger()
+# logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
 
 
 class FBSEnv(gym.Env):
-    def __init__(self, instance=None):
+    def __init__(self, instance=None, seed=None, options=None):
         with open(
-            "FbsEnv/files/maoyan_cont_instances.pkl",
+            "E://projects//pythonprojects//gym-flp-fbs//FbsEnv//files//maoyan_cont_instances.pkl",
             "rb",
         ) as file:
             (

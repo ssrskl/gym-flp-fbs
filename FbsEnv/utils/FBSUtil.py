@@ -7,30 +7,6 @@ from itertools import permutations, product
 import logging
 import colorlog
 
-# 设置日志
-# Create a color formatter
-formatter = colorlog.ColoredFormatter(
-    "%(log_color)s%(asctime)s - %(levelname)s - %(message)s",
-    datefmt=None,
-    reset=True,
-    log_colors={
-        "DEBUG": "cyan",
-        "INFO": "green",
-        "WARNING": "yellow",
-        "ERROR": "red",
-        "CRITICAL": "bold_red",
-    },
-)
-
-# Set up the handler
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-
-# Configure the root logger
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logger.addHandler(handler)
-
 
 # 物流强度矩阵转换
 def transfer_matrix(matrix: np.ndarray):
@@ -424,9 +400,23 @@ def arrangementOptimization(
 
 # -----------------FBS动作空间-----------------
 # 返回的类型为：(np.ndarray, np.ndarray)
+# 动作装饰器
+def log_action(func):
+    def wrapper(*args, **kwargs):
+        logging.debug(
+            f"变换前的排列：{args[0]}，变换前的区带：{args[1]}, 设施布局为：{permutationToArray(args[0], args[1])}"
+        )
+        result = func(*args, **kwargs)
+        logging.debug(
+            f"变换后的排列：{result[0]}，变换后的区带：{result[1]}, 设施布局为：{permutationToArray(result[0], result[1])}"
+        )
+        return result
+
+    return wrapper
 
 
 # 交换两个设施
+@log_action
 def facility_swap(permutation: np.ndarray, bay: np.ndarray):
     """交换两个设施"""
     # 随机选择两个设施
@@ -437,6 +427,7 @@ def facility_swap(permutation: np.ndarray, bay: np.ndarray):
 
 
 # 交换同一bay中的两个设施, t表示在同一个bay中交换两个设施
+@log_action
 def facility_swap_t(permutation: np.ndarray, bay: np.ndarray):
     """交换同一bay中的两个设施"""
     # 选择一个bay
@@ -451,14 +442,16 @@ def facility_swap_t(permutation: np.ndarray, bay: np.ndarray):
 
 
 # 将bay的值转换
-def bay_flip(bay: np.ndarray):
+@log_action
+def bay_flip(permutation: np.ndarray, bay: np.ndarray):
     """将bay的值转换"""
     index = np.random.choice(len(bay))
     bay[index] = 1 - bay[index]
-    return bay
+    return permutation, bay
 
 
 # 交换两个bay
+@log_action
 def bay_swap(permutation: np.ndarray, bay: np.ndarray):
     """交换两个bay"""
     # 转换为二维数组
@@ -473,6 +466,7 @@ def bay_swap(permutation: np.ndarray, bay: np.ndarray):
 
 
 # 修复bay
+@log_action
 def bay_repair(
     permutation: np.ndarray,
     bay: np.ndarray,
