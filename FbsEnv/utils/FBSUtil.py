@@ -398,7 +398,7 @@ def arrangementOptimization(
     return best_permutation, best_bay
 
 
-# -----------------FBS动作空间-----------------
+# ---------------------------------------------------FBS动作空间开始---------------------------------------------------
 # 返回的类型为：(np.ndarray, np.ndarray)
 # 动作装饰器
 def log_action(func):
@@ -415,20 +415,10 @@ def log_action(func):
     return wrapper
 
 
-# 交换两个设施
+# -------------------------------------------------单区带动作开始-------------------------------------------------
+# 交换同一bay中的两个设施, single表示在同一个bay中交换两个设施
 @log_action
-def facility_swap(permutation: np.ndarray, bay: np.ndarray):
-    """交换两个设施"""
-    # 随机选择两个设施
-    i, j = np.random.choice(len(permutation), 2, replace=False)
-    # 交换设施
-    permutation[i], permutation[j] = permutation[j], permutation[i]
-    return permutation, bay
-
-
-# 交换同一bay中的两个设施, t表示在同一个bay中交换两个设施
-@log_action
-def facility_swap_t(permutation: np.ndarray, bay: np.ndarray):
+def facility_swap_single(permutation: np.ndarray, bay: np.ndarray):
     """交换同一bay中的两个设施"""
     # 选择一个bay
     bay_index = np.where(bay == 1)[0]
@@ -438,6 +428,30 @@ def facility_swap_t(permutation: np.ndarray, bay: np.ndarray):
     i, j = np.random.choice(bay_index, 2, replace=False)
     # 交换设施
     permutation[i], permutation[j] = permutation[j], permutation[i]
+    return permutation, bay
+
+
+# 单一区代Shuffle
+@log_action
+def shuffle_single(permutation: np.ndarray, bay: np.ndarray):
+    """单一区代Shuffle"""
+    fac_list = permutationToArray(permutation, bay)
+    bay_index = np.random.choice(len(fac_list))  # 随机选择一个bay
+    sub_permutation = fac_list[bay_index]  # 得到bay_index对应的子排列
+    np.random.shuffle(sub_permutation)  # 将sub_permutation进行shuffle
+    fac_list[bay_index] = sub_permutation  # 将sub_permutation放回fac_list
+    permutation, bay = arrayToPermutation(fac_list)  # 将fac_list转换为permutation和bay
+    return permutation, bay
+
+
+# -------------------------------------------------单区带动作结束-------------------------------------------------
+# -------------------------------------------------个体动作开始-------------------------------------------------
+# 交换两个设施
+@log_action
+def facility_swap(permutation: np.ndarray, bay: np.ndarray):
+    """交换两个设施"""
+    i, j = np.random.choice(len(permutation), 2, replace=False)  # 随机选择两个设施
+    permutation[i], permutation[j] = permutation[j], permutation[i]  # 交换设施
     return permutation, bay
 
 
@@ -462,6 +476,35 @@ def bay_swap(permutation: np.ndarray, bay: np.ndarray):
     array[i], array[j] = array[j], array[i]
     # 转换为排列和bay
     permutation, bay = arrayToPermutation(array)
+    return permutation, bay
+
+
+# 对区带shuffle
+@log_action
+def bay_shuffle(permutation: np.ndarray, bay: np.ndarray):
+    """对区带shuffle"""
+    fac_list = permutationToArray(permutation, bay)
+    np.random.shuffle(fac_list)
+    permutation, bay = arrayToPermutation(fac_list)
+    return permutation, bay
+
+
+# 对设施排列shuffle
+@log_action
+def facility_shuffle(permutation: np.ndarray, bay: np.ndarray):
+    """对设施排列shuffle"""
+    fac_list = permutationToArray(permutation, bay)
+    for i in range(len(fac_list)):
+        np.random.shuffle(fac_list[i])
+    permutation, bay = arrayToPermutation(fac_list)
+    return permutation, bay
+
+
+# 对排列shuffle
+@log_action
+def permutation_shuffle(permutation: np.ndarray, bay: np.ndarray):
+    """对排列shuffle"""
+    np.random.shuffle(permutation)
     return permutation, bay
 
 
@@ -502,7 +545,10 @@ def bay_repair(
     return permutation, bay
 
 
+# -------------------------------------------------个体动作结束-------------------------------------------------
 # TODO 2024-10-07 还未完成FBS的Step编写
+
+# ---------------------------------------------------FBS动作空间结束---------------------------------------------------
 
 
 def permutationToArray(permutation, bay):
