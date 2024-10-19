@@ -33,8 +33,8 @@ handler.setFormatter(formatter)
 
 # Configure the root logger
 logger = logging.getLogger()
-# logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
+# logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 
 
@@ -60,7 +60,19 @@ class FBSEnv(gym.Env):
         self.L = self.LayoutLengths[self.instance]  # 厂房的
         self.W = self.LayoutWidths[self.instance]  # 厂房的宽度
         total_area = np.sum(self.area)  # 设施的总面积
-        self.action_space = spaces.Discrete(2)  # 动作空间
+        self.actions = {
+            0: "facility_swap_single",
+            1: "shuffle_single",
+            2: "facility_swap",
+            3: "bay_flip",
+            4: "bay_swap",
+            5: "bay_shuffle",
+            6: "facility_shuffle",
+            7: "permutation_shuffle",
+            # 8: "repair",
+        }  # 动作空间
+        self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
+
         # TODO 需要归一化处理
         # 定义观察空间
         facility_distance = spaces.Box(
@@ -120,7 +132,67 @@ class FBSEnv(gym.Env):
 
     def step(self, action):
         # 根据action执行相应的操作
-        pass
+        action_name = self.actions[int(action)]
+        if action_name == "facility_swap_single":
+            self.permutation, self.bay = FBSUtil.facility_swap_single(
+                self.permutation, self.bay
+            )
+        elif action_name == "shuffle_single":
+            self.permutation, self.bay = FBSUtil.shuffle_single(
+                self.permutation, self.bay
+            )
+        elif action_name == "facility_swap":
+            self.permutation, self.bay = FBSUtil.facility_swap(
+                self.permutation, self.bay
+            )
+        elif action_name == "bay_flip":
+            self.permutation, self.bay = FBSUtil.bay_flip(self.permutation, self.bay)
+        elif action_name == "bay_swap":
+            self.permutation, self.bay = FBSUtil.bay_swap(self.permutation, self.bay)
+        elif action_name == "bay_shuffle":
+            self.permutation, self.bay = FBSUtil.bay_shuffle(self.permutation, self.bay)
+        elif action_name == "facility_shuffle":
+            self.permutation, self.bay = FBSUtil.facility_shuffle(
+                self.permutation, self.bay
+            )
+        elif action_name == "permutation_shuffle":
+            self.permutation, self.bay = FBSUtil.permutation_shuffle(
+                self.permutation, self.bay
+            )
+        else:
+            raise ValueError(f"Invalid action: {action_name}")
+        # 刷新状态
+        (
+            self.fac_x,
+            self.fac_y,
+            self.fac_b,
+            self.fac_h,
+            self.fac_aspect_ratio,
+            self.D,
+            self.TM,
+            self.MHC,
+            self.Fitness,
+        ) = FBSUtil.StatusUpdatingDevice(
+            self.permutation, self.bay, self.area, self.W, self.F, self.fac_limit_aspect
+        )
+        # 更新状态
+        self.state = {
+            "facility_distance": self.D,
+            "facility_arrangement": np.array([self.permutation, self.bay]),
+            "facility_information": np.array(
+                [
+                    self.fac_h,
+                    self.fac_b,
+                    self.area,
+                    self.fac_x,
+                    self.fac_y,
+                ]
+            ),
+        }
+        # 计算奖励函数
+        reward = self.Fitness - self.previous_fitness
+        self.previous_fitness = self.Fitness
+        return self.state, reward, False, {}
 
     def render(self):
         # 创建图形和坐标轴

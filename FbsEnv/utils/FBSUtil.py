@@ -239,6 +239,7 @@ def getManhattanDistances(x, y):
 def permutationMatrix(a):
     P = np.zeros((len(a), len(a)))
     for idx, val in enumerate(a):
+        logging.debug(f"idx: {idx}, val: {val}")
         P[idx][val - 1] = 1
     return P
 
@@ -403,6 +404,8 @@ def arrangementOptimization(
 # 动作装饰器
 def log_action(func):
     def wrapper(*args, **kwargs):
+        # 输出方法名
+        logging.debug(f"方法名：{func.__name__}")
         logging.debug(
             f"变换前的排列：{args[0]}，变换前的区带：{args[1]}, 设施布局为：{permutationToArray(args[0], args[1])}"
         )
@@ -470,6 +473,8 @@ def bay_swap(permutation: np.ndarray, bay: np.ndarray):
     """交换两个bay"""
     # 转换为二维数组
     array = permutationToArray(permutation, bay)
+    if len(array) < 2:
+        return permutation, bay  # 如果bay的数量小于2，则直接返回
     # 随机选择两个bay
     i, j = np.random.choice(len(array), 2, replace=False)
     # 交换两个bay
@@ -510,7 +515,7 @@ def permutation_shuffle(permutation: np.ndarray, bay: np.ndarray):
 
 # 修复bay
 @log_action
-def bay_repair(
+def repair(
     permutation: np.ndarray,
     bay: np.ndarray,
     fac_b: np.ndarray,
@@ -552,6 +557,8 @@ def bay_repair(
 
 
 def permutationToArray(permutation, bay):
+    """将排列转换为二维数组"""
+    bay[-1] = 1  # 将bay的最后一个元素设置为1
     array = []
     start = 0
     for i, val in enumerate(bay):

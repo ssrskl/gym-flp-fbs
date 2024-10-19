@@ -27,3 +27,13 @@ pip install -e .
 ```
 
 安装好之后就可以正常使用 gym 的环境了
+
+## 问题解决
+
+报错：`AttributeError: module 'numpy' has no attribute 'bool8'. Did you mean: 'bool'?`
+参考：[How to fix nptyping AttributeError: module 'numpy' has no attribute 'bool8'. Did you mean: 'bool'?
+](https://techoverflow.net/2024/09/20/how-to-fix-nptyping-attributeerror-module-numpy-has-no-attribute-bool8-did-you-mean-bool/)
+
+```bash
+pip install -U nptyping
+```
