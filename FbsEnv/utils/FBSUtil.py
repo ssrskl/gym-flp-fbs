@@ -296,7 +296,7 @@ def StatusUpdatingDevice(permutation, bay, a, W, F, fac_limit_aspect_ratio):
 
 
 # ---------------------------------------------------FBS局部优化开始---------------------------------------------------
-# Shuffle+全排列单区带渐进优化
+# Shuffle单区带优化
 def shuffleOptimization(env, bay_index):
     fac_list = permutationToArray(env.permutation, env.bay)
     child_permutation = fac_list[bay_index]
@@ -355,7 +355,7 @@ def fullPermutationOptimization(permutation, bay, a, W, D, F, fac_limit_aspect):
     return np.array(best_perm)
 
 
-# 单区带全排列优化 （废弃：对于长序列，全排列的计算量太大）
+# 单区带全排列优化
 def SingleBayGradualArrangementOptimization(env, bay_index):
     fac_list = permutationToArray(env.permutation, env.bay)
     best_fitness = env.Fitness.copy()

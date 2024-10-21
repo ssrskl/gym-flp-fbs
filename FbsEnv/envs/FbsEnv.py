@@ -1,4 +1,5 @@
 import pickle
+import uuid
 import gym
 from gym import spaces
 import matplotlib
@@ -52,6 +53,7 @@ class FBSEnv(gym.Env):
                 self.LayoutLengths,
             ) = pickle.load(file)
         self.instance = instance
+        self.uuid = uuid.uuid4()
         self.F = self.FlowMatrices[self.instance]  # 物流强度矩阵
         self.n = self.problems[self.instance]  # 问题模型的设施数量
         self.fac_limit_aspect, self.l, self.w, self.area, self.min_side_length = (

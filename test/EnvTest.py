@@ -11,4 +11,3 @@ bay = np.array([0, 0, 1, 0, 0, 0, 1])
 layout = (permutation, bay)
 env.reset(layout=layout)
 env.render()
-
