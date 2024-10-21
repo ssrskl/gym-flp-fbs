@@ -1,4 +1,5 @@
 import itertools
+import math
 import random
 import gym
 import numpy as np
@@ -294,7 +295,33 @@ def StatusUpdatingDevice(permutation, bay, a, W, F, fac_limit_aspect_ratio):
     return (fac_x, fac_y, fac_b, fac_h, fac_aspect_ratio, D, TM, mhc, fitness)
 
 
-# -----------------FBS局部优化-----------------
+# ---------------------------------------------------FBS局部优化开始---------------------------------------------------
+# Shuffle+全排列单区带渐进优化
+def shuffleOptimization(env, bay_index):
+    fac_list = permutationToArray(env.permutation, env.bay)
+    child_permutation = fac_list[bay_index]
+    # 对child_permutation进行shuffle n*n 次
+    n = env.n
+    max_not_improve_steps = n * 100  # 最大不改进步数
+    best_fitness = env.Fitness.copy()
+    best_permutation = env.permutation.copy()
+    not_improve_steps = 0
+    for _ in range(n * n):
+        np.random.shuffle(child_permutation)
+        fac_list[bay_index] = child_permutation  # 更新fac_list
+        permutation, bay = arrayToPermutation(fac_list)
+        env.reset(layout=(permutation, bay))
+        if env.Fitness < best_fitness:
+            best_fitness = env.Fitness
+            best_permutation = env.permutation
+            not_improve_steps = 0
+        else:
+            not_improve_steps += 1
+        if not_improve_steps > max_not_improve_steps:
+            break
+    return best_permutation, env.bay
+
+
 # 全排列局部优化
 def fullPermutationOptimization(permutation, bay, a, W, D, F, fac_limit_aspect):
     # 对当前的状态进行局部搜索，返回新的状态和适应度函数值
@@ -326,6 +353,25 @@ def fullPermutationOptimization(permutation, bay, a, W, D, F, fac_limit_aspect):
     # print("局部搜索优化后的最优排列: ", best_perm)
     # print("局部搜索优化后的最优适应度函数值: ", best_fitness)
     return np.array(best_perm)
+
+
+# 单区带全排列优化 （废弃：对于长序列，全排列的计算量太大）
+def SingleBayGradualArrangementOptimization(env, bay_index):
+    fac_list = permutationToArray(env.permutation, env.bay)
+    best_fitness = env.Fitness.copy()
+    best_permutation = env.permutation.copy()
+    best_bay = env.bay.copy()
+    child_permutation = fac_list[bay_index]
+    child_permutations = itertools.permutations(child_permutation)
+    for child_perm in child_permutations:  # 从单区带的全排列中选择最优的排列
+        fac_list[bay_index] = child_perm  # 合并到fac_list
+        permutation, bay = arrayToPermutation(fac_list)
+        env.reset(layout=(permutation, bay))
+        if env.Fitness < best_fitness:
+            best_fitness = env.Fitness
+            best_permutation = permutation
+            best_bay = bay
+    return best_permutation, best_bay
 
 
 # 交换局部优化算法
@@ -397,6 +443,9 @@ def arrangementOptimization(
     # 输出最终的最佳适应度
     print(f"best_fitness: {best_fitness}")
     return best_permutation, best_bay
+
+
+# ---------------------------------------------------FBS局部优化结束---------------------------------------------------
 
 
 # ---------------------------------------------------FBS动作空间开始---------------------------------------------------
