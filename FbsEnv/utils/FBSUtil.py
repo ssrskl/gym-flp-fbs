@@ -8,6 +8,8 @@ from itertools import permutations, product
 import logging
 import colorlog
 
+from FbsEnv.envs.FBSModel import FBSModel
+
 
 # 物流强度矩阵转换
 def transfer_matrix(matrix: np.ndarray):
@@ -25,7 +27,11 @@ def transfer_matrix(matrix: np.ndarray):
 
 
 # 获取面积数据
-def getAreaData(df):
+def getAreaData(
+    df,
+) -> tuple[
+    np.ndarray[float], np.ndarray[float], np.ndarray[float], np.ndarray[float], float
+]:
     # 检查Area数据是否存在，存在则转换为numpy数组，否则为None
     if np.any(df.columns.str.contains("Area", na=False, case=False)):
         a = df.filter(regex=re.compile("Area", re.IGNORECASE)).to_numpy()
@@ -71,6 +77,25 @@ def getAreaData(df):
         a = a[:, 0]
     a = np.reshape(a, (a.shape[0],))
     return ar, l, w, a, l_min
+
+
+# 随机解生成器
+def random_solution_generator(n: int) -> tuple[np.ndarray, np.ndarray]:
+    """生成随机解"""
+    # 生成随机排列
+    permutation = np.arange(1, n + 1)
+    np.random.shuffle(permutation)
+    
+    # 生成随机bay划分
+    bay = np.zeros(n, dtype=int)
+    # 随机选择1-3个位置设置为1(不包括最后一个位置)
+    num_ones = np.random.randint(1, min(4, n-1))
+    positions = np.random.choice(n-1, num_ones, replace=False)
+    bay[positions] = 1
+    # 确保最后一个位置为1
+    bay[-1] = 1
+    
+    return permutation, bay
 
 
 # k分初始解生成器(输入：面积数据a，设施数n，横纵比限制beta，厂房x轴长度L)
@@ -164,9 +189,12 @@ def _find_best_partition(arr, k):
 
 
 # 计算设施坐标和尺寸
-def getCoordinates_mao(permutation, bay, area, W):
+def getCoordinates_mao(fbs_model: FBSModel, area, W):
+    permutation = fbs_model.permutation
+    bay = fbs_model.bay
     # 将排列按照划分点分割成多个子数组，每个子数组代表一个区段的排列
-    bays = np.split(permutation, indices_or_sections=np.where(bay == 1)[0][:-1] + 1)
+    bays = permutationToArray(permutation, bay)
+    # bays = np.split(permutation, indices_or_sections=np.where(bay == 1)[0][:-1] + 1)
 
     # 初始化长度、宽度和坐标数组
     lengths = np.zeros(len(permutation))
@@ -178,7 +206,7 @@ def getCoordinates_mao(permutation, bay, area, W):
     start = 0
     # 从上向下排列
     for b in bays:
-        areas = area[b - 1]
+        areas = [area[i - 1] for i in b]
         end = start + len(areas)
 
         # 计算每个设施的长度和宽度
@@ -245,13 +273,15 @@ def permutationMatrix(a):
     return P
 
 
-def getTransportIntensity(D, F, s):
-    P = permutationMatrix(s)
+def getTransportIntensity(D, F, fbs_model: FBSModel):
+    permutation = fbs_model.permutation
+    P = permutationMatrix(permutation)
     return np.dot(np.dot(D, P), np.dot(F, P.T))
 
 
 # 计算MHC
-def getMHC(D, F, permutation):
+def getMHC(D, F, fbs_model: FBSModel):
+    permutation = fbs_model.permutation
     P = permutationMatrix(permutation)
     # MHC = np.sum(np.tril(np.dot(P.T, np.dot(D, P))) * (F.T))
     # MHC = np.sum(np.triu(D) * (F))
@@ -285,12 +315,12 @@ def getFitness(mhc, fac_b, fac_h, fac_limit_aspect):
     return fitness
 
 
-def StatusUpdatingDevice(permutation, bay, a, W, F, fac_limit_aspect_ratio):
-    fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(permutation, bay, a, W)
+def StatusUpdatingDevice(fbs_model: FBSModel, a, W, F, fac_limit_aspect_ratio):
+    fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(fbs_model, a, W)
     fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
     D = getManhattanDistances(fac_x, fac_y)
-    TM = getTransportIntensity(D, F, permutation)
-    mhc = getMHC(D, F, permutation)
+    TM = getTransportIntensity(D, F, fbs_model)
+    mhc = getMHC(D, F, fbs_model)
     fitness = getFitness(mhc, fac_b, fac_h, fac_limit_aspect_ratio)
     return (fac_x, fac_y, fac_b, fac_h, fac_aspect_ratio, D, TM, mhc, fitness)
 
@@ -601,6 +631,53 @@ def repair(
 
 # -------------------------------------------------个体动作结束-------------------------------------------------
 # -------------------------------------------------群体动作开始-------------------------------------------------
+# 顺序交叉
+def orderCrossover(parent1: FBSModel, parent2: FBSModel):
+    """顺序交叉"""
+    size = len(parent1.permutation)
+    offspring1_permutation = [-1] * size  # 初始化第一个子代的设施序列
+    offspring2_permutation = [-1] * size  # 初始化第二个子代的设施序列
+    start, end = sorted(random.sample(range(size), 2))  # 随机选择交叉点范围
+    offspring1_permutation[start : end + 1] = parent1.permutation[start : end + 1]
+    offspring2_permutation[start : end + 1] = parent2.permutation[start : end + 1]
+    pos1 = (end + 1) % size  # 填充第一个子代的起始位置
+    pos2 = (end + 1) % size  # 填充第二个子代的起始位置
+    for i in range(size):
+        candidate1 = parent2.permutation[(end + 1 + i) % size]
+        candidate2 = parent1.permutation[(end + 1 + i) % size]
+        if candidate1 not in offspring1_permutation:
+            offspring1_permutation[pos1] = candidate1
+            pos1 = (pos1 + 1) % size
+        if candidate2 not in offspring2_permutation:
+            offspring2_permutation[pos2] = candidate2
+            pos2 = (pos2 + 1) % size
+    offspring1_bay = [-1] * size  # 初始化第一个子代的区带数组
+    offspring2_bay = [-1] * size  # 初始化第二个子代的区带数组
+    for i in range(size):
+        facility1 = offspring1_permutation[i]
+        facility2 = offspring2_permutation[i]
+        # 在第一个亲本中找出该设施的位置，并继承对应的区带信息
+        index_in_parent1_for_offspring1 = np.where(parent1.permutation == facility1)[0][
+            0
+        ]
+        index_in_parent2_for_offspring2 = np.where(parent2.permutation == facility2)[0][
+            0
+        ]
+        offspring1_bay[i] = parent1.bay[index_in_parent1_for_offspring1]
+        offspring2_bay[i] = parent2.bay[index_in_parent2_for_offspring2]
+    offspring1_bay[-1] = 1
+    offspring2_bay[-1] = 1
+    # 转换为整数
+    offspring1_permutation = np.array(offspring1_permutation, dtype=int)
+    offspring2_permutation = np.array(offspring2_permutation, dtype=int)
+    offspring1_bay = np.array(offspring1_bay, dtype=int)
+    offspring2_bay = np.array(offspring2_bay, dtype=int)
+    return (
+        offspring1_permutation,
+        offspring1_bay,
+        offspring2_permutation,
+        offspring2_bay,
+    )
 
 
 # -------------------------------------------------群体动作结束-------------------------------------------------

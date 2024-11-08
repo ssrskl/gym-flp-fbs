@@ -17,9 +17,7 @@ class GAAlgorithm:
         crossover_rate=0.8,
         max_generations=100,
     ):
-        self.env = gym.make("FbsEnv-v0", instance=instance)
         self.instance = instance
-        self.model = DQN("MultiInputPolicy", env=self.env, verbose=1)
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -47,7 +45,7 @@ class GAAlgorithm:
         total_fitness = sum(self.population_fitness)
         selection_probs = [
             fitness / total_fitness for fitness in self.population_fitness
-        ]    
+        ]
         selected_indices = np.random.choice(
             range(self.population_size), size=2, p=selection_probs
         )
@@ -64,7 +62,7 @@ class GAAlgorithm:
             offspring2_bay,
         ) = FBSUtil.orderCrossover(parent1.fbs_model, parent2.fbs_model)
         offspring1 = gym.make("FbsEnv-v0", instance=self.instance)
-        offspring1_fbs_model = FBSModel(    
+        offspring1_fbs_model = FBSModel(
             permutation=offspring1_permutation, bay=offspring1_bay
         )
         offspring1.reset(fbs_model=offspring1_fbs_model)
