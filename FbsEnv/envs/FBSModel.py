@@ -3,6 +3,8 @@ import numpy as np
 
 class FBSModel:
     def __init__(self, permutation: list[int], bay: list[int]):
+        if len(permutation) != len(bay):
+            raise ValueError("permutation和bay的长度必须相同")
         self._permutation = permutation
         self._bay = bay
 

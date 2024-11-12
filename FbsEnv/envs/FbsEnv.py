@@ -43,10 +43,12 @@ logger.addHandler(handler)
 
 
 class FBSEnv(gym.Env):
+
     def __init__(self, instance=None, seed=None, options=None):
+        super(FBSEnv, self).__init__()
         with open(
-            "E://projects//pythonprojects//gym-flp-fbs//FbsEnv//files//maoyan_cont_instances.pkl",
-            "rb",
+                "E://projects//pythonprojects//gym-flp-fbs//FbsEnv//files//maoyan_cont_instances.pkl",
+                "rb",
         ) as file:
             (
                 self.problems,
@@ -84,20 +86,17 @@ class FBSEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
 
         # 保持观察空间为字典形式
-        self.observation_space = spaces.Dict(
-            {
-                "facility_distance": spaces.Box(
-                    low=0, high=1, shape=(self.n, self.n), dtype=np.float64
-                ),
-                "facility_arrangement": spaces.Box(
-                    low=0, high=1, shape=(2, self.n), dtype=np.float64
-                ),
-                "facility_information": spaces.Box(
-                    low=0, high=1, shape=(6, self.n), dtype=np.float64
-                ),
-                "fitness": spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float64),
-            }
-        )
+        self.observation_space = spaces.Dict({
+            "facility_distance":
+            spaces.Box(low=0, high=1, shape=(self.n, self.n),
+                       dtype=np.float64),
+            "facility_arrangement":
+            spaces.Box(low=0, high=1, shape=(2, self.n), dtype=np.float64),
+            "facility_information":
+            spaces.Box(low=0, high=1, shape=(6, self.n), dtype=np.float64),
+            "fitness":
+            spaces.Box(low=0, high=np.inf, shape=(1, ), dtype=np.float64),
+        })
         self._fitness = np.inf
 
         # ------------------调试信息------------------
@@ -120,13 +119,14 @@ class FBSEnv(gym.Env):
     def fitness(self, fitness: float):
         self._fitness = fitness
 
-    def reset(self, fbs_model: FBSModel = None):
+    def reset(self, fbs_model: FBSModel = None): # type: ignore
         if fbs_model is None:
             permutation, bay = FBSUtil.binary_solution_generator(
-                self.area, self.n, self.fac_limit_aspect, self.L
-            )  # 采用k分初始解生成器
+                self.area, self.n, self.fac_limit_aspect, self.L)  # 采用k分初始解生成器
             bay[-1] = 1  # bay的最后一个位置必须是1，表示最后一个设施是bay的结束
-            self.fbs_model = FBSModel(permutation, bay)
+            self.fbs_model = FBSModel(
+                permutation.astype(int).tolist(),
+                bay.astype(int).tolist())
         else:
             self.fbs_model = fbs_model
         (
@@ -139,30 +139,30 @@ class FBSEnv(gym.Env):
             self.TM,
             self.MHC,
             self.fitness,
-        ) = FBSUtil.StatusUpdatingDevice(
-            self.fbs_model, self.area, self.W, self.F, self.fac_limit_aspect
-        )
+        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.area, self.W,
+                                         self.F, self.fac_limit_aspect)
         self.previous_fitness = self.fitness  # 初始化上一次的适应度值
         # 更新状态字典
         self.state = {
-            "facility_distance": self.D / np.max(self.D),
-            "facility_arrangement": np.array(
-                [self.fbs_model.permutation, self.fbs_model.bay]
-            )
-            / self.n,
-            "facility_information": np.array(
-                [
-                    self.fac_h / self.W,
-                    self.fac_b / self.L,
-                    self.area / np.max(self.area),
-                    self.fac_x / self.L,
-                    self.fac_y / self.W,
-                    self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
-                ]
-            ),
-            "fitness": np.array(
-                [self.fitness / self.previous_fitness if self.previous_fitness else 1]
-            ),
+            "facility_distance":
+            self.D / np.max(self.D),
+            "facility_arrangement":
+            np.array([self.fbs_model.permutation, self.fbs_model.bay]) /
+            self.n,
+            "facility_information":
+            np.array([
+                self.fac_h / self.W,
+                self.fac_b / self.L,
+                self.area / np.max(self.area),
+                self.fac_x / self.L,
+                self.fac_y / self.W,
+                self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
+            ]),
+            "fitness":
+            np.array([
+                self.fitness /
+                self.previous_fitness if self.previous_fitness else 1
+            ]),
         }
         logger.debug("-------------------reset调试信息------------------")
         logger.debug(f"设施x坐标: {self.fac_x}")
@@ -180,25 +180,19 @@ class FBSEnv(gym.Env):
 
     def calculate_reward(self):
         # 计算MHC改善程度
-        mhc_improvement = (
-            (self.previous_MHC - self.MHC) / self.previous_MHC
-            if self.previous_MHC
-            else 0
-        )
+        mhc_improvement = ((self.previous_MHC - self.MHC) /
+                           self.previous_MHC if self.previous_MHC else 0)
 
         # 计算约束违反惩罚
         aspect_ratio_penalty = sum(
-            max(0, ar - self.fac_limit_aspect[i][1])
-            + max(0, self.fac_limit_aspect[i][0] - ar)
-            for i, ar in enumerate(self.fac_aspect_ratio)
-        )
+            max(0, ar - self.fac_limit_aspect[i][1]) +
+            max(0, self.fac_limit_aspect[i][0] - ar)
+            for i, ar in enumerate(self.fac_aspect_ratio))
 
         # 计算fitness改善程度
-        fitness_improvement = (
-            (self.fitness - self.previous_fitness) / self.previous_fitness
-            if self.previous_fitness
-            else 0
-        )
+        fitness_improvement = ((self.fitness - self.previous_fitness) /
+                               self.previous_fitness
+                               if self.previous_fitness else 0)
 
         # 综合奖励计算
         reward = (
@@ -214,40 +208,30 @@ class FBSEnv(gym.Env):
         action_name = self.actions[int(action)]
         if action_name == "facility_swap_single":
             self.fbs_model.permutation, self.fbs_model.bay = (
-                FBSUtil.facility_swap_single(
-                    self.fbs_model.permutation, self.fbs_model.bay
-                )
-            )
+                FBSUtil.facility_swap_single(self.fbs_model.permutation,
+                                             self.fbs_model.bay))
         elif action_name == "shuffle_single":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.shuffle_single(
-                self.fbs_model.permutation, self.fbs_model.bay
-            )
+                self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "facility_swap":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.facility_swap(
-                self.fbs_model.permutation, self.fbs_model.bay
-            )
+                self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "bay_flip":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.bay_flip(
-                self.fbs_model.permutation, self.fbs_model.bay
-            )
+                self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "bay_swap":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.bay_swap(
-                self.fbs_model.permutation, self.fbs_model.bay
-            )
+                self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "bay_shuffle":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.bay_shuffle(
-                self.fbs_model.permutation, self.fbs_model.bay
-            )
+                self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "facility_shuffle":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.facility_shuffle(
-                self.fbs_model.permutation, self.fbs_model.bay
-            )
+                self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "permutation_shuffle":
             self.fbs_model.permutation, self.fbs_model.bay = (
-                FBSUtil.permutation_shuffle(
-                    self.fbs_model.permutation, self.fbs_model.bay
-                )
-            )
+                FBSUtil.permutation_shuffle(self.fbs_model.permutation,
+                                            self.fbs_model.bay))
         else:
             raise ValueError(f"Invalid action: {action_name}")
 
@@ -264,29 +248,29 @@ class FBSEnv(gym.Env):
             self.TM,
             self.MHC,
             self.fitness,
-        ) = FBSUtil.StatusUpdatingDevice(
-            self.fbs_model, self.area, self.W, self.F, self.fac_limit_aspect
-        )
+        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.area, self.W,
+                                         self.F, self.fac_limit_aspect)
         # 更新状态字典
         self.state = {
-            "facility_distance": self.D / np.max(self.D),
-            "facility_arrangement": np.array(
-                [self.fbs_model.permutation, self.fbs_model.bay]
-            )
-            / self.n,
-            "facility_information": np.array(
-                [
-                    self.fac_h / self.W,
-                    self.fac_b / self.L,
-                    self.area / np.max(self.area),
-                    self.fac_x / self.L,
-                    self.fac_y / self.W,
-                    self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
-                ]
-            ),
-            "fitness": np.array(
-                [self.fitness / self.previous_fitness if self.previous_fitness else 1]
-            ),
+            "facility_distance":
+            self.D / np.max(self.D),
+            "facility_arrangement":
+            np.array([self.fbs_model.permutation, self.fbs_model.bay]) /
+            self.n,
+            "facility_information":
+            np.array([
+                self.fac_h / self.W,
+                self.fac_b / self.L,
+                self.area / np.max(self.area),
+                self.fac_x / self.L,
+                self.fac_y / self.W,
+                self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
+            ]),
+            "fitness":
+            np.array([
+                self.fitness /
+                self.previous_fitness if self.previous_fitness else 1
+            ]),
         }
         # 计算奖励函数
         reward = self.calculate_reward()
@@ -321,15 +305,17 @@ class FBSEnv(gym.Env):
         plt.grid(False)
         plt.gca().set_aspect("equal", adjustable="box")
         for i, facility_label in enumerate(self.fbs_model.permutation):
-            x_from = self.fac_x[facility_label - 1] - self.fac_b[facility_label - 1] / 2
-            x_to = self.fac_x[facility_label - 1] + self.fac_b[facility_label - 1] / 2
-            y_from = self.fac_y[facility_label - 1] - self.fac_h[facility_label - 1] / 2
-            y_to = self.fac_y[facility_label - 1] + self.fac_h[facility_label - 1] / 2
+            x_from = self.fac_x[facility_label -
+                                1] - self.fac_b[facility_label - 1] / 2
+            x_to = self.fac_x[facility_label -
+                              1] + self.fac_b[facility_label - 1] / 2
+            y_from = self.fac_y[facility_label -
+                                1] - self.fac_h[facility_label - 1] / 2
+            y_to = self.fac_y[facility_label -
+                              1] + self.fac_h[facility_label - 1] / 2
             line_color = "black"
-            if (
-                self.fac_aspect_ratio[facility_label - 1]
-                > self.fac_limit_aspect[facility_label - 1][1]
-            ):
+            if (self.fac_aspect_ratio[facility_label - 1]
+                    > self.fac_limit_aspect[facility_label - 1][1]):
                 line_color = "red"
             else:
                 line_color = "green"
@@ -357,7 +343,8 @@ class FBSEnv(gym.Env):
         plt.figtext(
             0.5,
             0.93,
-            "MHC: {:.2f}".format(FBSUtil.getMHC(self.D, self.F, self.fbs_model)),
+            "MHC: {:.2f}".format(FBSUtil.getMHC(self.D, self.F,
+                                                self.fbs_model)),
             ha="center",
             fontsize=12,
         )
@@ -366,10 +353,8 @@ class FBSEnv(gym.Env):
             0.5,
             0.96,
             "fitness: {:.2f}".format(
-                FBSUtil.getFitness(
-                    self.MHC, self.fac_b, self.fac_h, self.fac_limit_aspect
-                )
-            ),
+                FBSUtil.getFitness(self.MHC, self.fac_b, self.fac_h,
+                                   self.fac_limit_aspect)),
             ha="center",
             fontsize=12,
         )

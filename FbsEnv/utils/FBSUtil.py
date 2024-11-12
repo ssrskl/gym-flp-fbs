@@ -12,6 +12,76 @@ from FbsEnv.envs.FBSModel import FBSModel
 import copy
 
 
+class FBSUtils:
+
+    class MutateActions:
+
+        @staticmethod
+        def facility_swap(fbs_model: FBSModel):
+            logging.info("执行设施交换")
+            pass
+
+        @staticmethod
+        def bay_flip(fbs_model: FBSModel):
+            logging.info("执行区带反转")
+            pass
+
+    class CrossoverActions:
+
+        @staticmethod
+        def order_crossover(parent1: list[int],
+                            parent2: list[int]) -> tuple[list[int], list[int]]:
+            size = len(parent1)
+            startPoint, endPoint = sorted(
+                np.random.choice(size, 2, replace=False))
+            logging.info(
+                f"order_crossover-->startPoint: {startPoint}, endPoint: {endPoint}"
+            )
+            crossover_part_1 = parent1[startPoint:endPoint + 1]
+            crossover_part_2 = parent2[startPoint:endPoint + 1]
+            # 获取 parent1 中去除 crossover_part_2 的部分
+            parent1_remaining = [
+                elem for elem in parent1 if elem not in crossover_part_2
+            ]
+            # 获取 parent2 中去除 crossover_part_1 的部分
+            parent2_remaining = [
+                elem for elem in parent2 if elem not in crossover_part_1
+            ]
+
+            offspring_1 = parent1_remaining[:
+                                            startPoint] + crossover_part_2 + parent1_remaining[
+                                                startPoint:]
+            offspring_2 = parent2_remaining[:
+                                            startPoint] + crossover_part_1 + parent2_remaining[
+                                                startPoint:]
+
+            return offspring_1, offspring_2
+
+
+def fill_without_duplicates(parent1: list[int], parent2: list[int],
+                            startPoint: int,
+                            endPoint: int) -> tuple[list[int], list[int]]:
+    crossover_part_1 = parent1[startPoint:endPoint + 1]
+    crossover_part_2 = parent2[startPoint:endPoint + 1]
+    # 获取 parent1 中去除 crossover_part_2 的部分
+    parent1_remaining = [
+        elem for elem in parent1 if elem not in crossover_part_2
+    ]
+    # 获取 parent2 中去除 crossover_part_1 的部分
+    parent2_remaining = [
+        elem for elem in parent2 if elem not in crossover_part_1
+    ]
+
+    offspring_1 = parent1_remaining[:
+                                    startPoint] + crossover_part_2 + parent1_remaining[
+                                        startPoint:]
+    offspring_2 = parent2_remaining[:
+                                    startPoint] + crossover_part_1 + parent2_remaining[
+                                        startPoint:]
+
+    return offspring_1, offspring_2
+
+
 # 物流强度矩阵转换
 def transfer_matrix(matrix: np.ndarray):
     """
