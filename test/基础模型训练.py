@@ -10,8 +10,8 @@ import FbsEnv.utils.FBSUtil as FBSUtil
 from stable_baselines3 import DQN
 
 themeName = "基础模型训练"
-instance = "O9-maoyan"
-total_timesteps = 10000
+instance = "AB20-ar3"
+total_timesteps = 400000
 env = gym.make("FbsEnv-v0", instance=instance)
 model = DQN("MultiInputPolicy", env, verbose=1)
 model.learn(total_timesteps=total_timesteps)

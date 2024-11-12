@@ -67,7 +67,7 @@ class FBSEnv(gym.Env):
         logger.debug(f"宽度: {self.w}")
         logger.debug(f"面积: {self.area}")
         logger.debug(f"最小边长: {self.min_side_length}")
-        self.L = self.LayoutLengths[self.instance]  # 厂房的
+        self.L = self.LayoutLengths[self.instance]  # 厂房的长度
         self.W = self.LayoutWidths[self.instance]  # 厂房的宽度
         total_area = np.sum(self.area)  # 设施的总面积
         self.actions = {

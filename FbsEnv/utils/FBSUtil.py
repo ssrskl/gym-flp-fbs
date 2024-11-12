@@ -7,8 +7,9 @@ import re
 from itertools import permutations, product
 import logging
 import colorlog
-
+from functools import wraps
 from FbsEnv.envs.FBSModel import FBSModel
+import copy
 
 
 # 物流强度矩阵转换
@@ -29,9 +30,8 @@ def transfer_matrix(matrix: np.ndarray):
 # 获取面积数据
 def getAreaData(
     df,
-) -> tuple[
-    np.ndarray[float], np.ndarray[float], np.ndarray[float], np.ndarray[float], float
-]:
+) -> tuple[np.ndarray[float], np.ndarray[float], np.ndarray[float],
+           np.ndarray[float], float]:
     # 检查Area数据是否存在，存在则转换为numpy数组，否则为None
     if np.any(df.columns.str.contains("Area", na=False, case=False)):
         a = df.filter(regex=re.compile("Area", re.IGNORECASE)).to_numpy()
@@ -40,13 +40,13 @@ def getAreaData(
 
     if np.any(df.columns.str.contains("Length", na=False, case=False)):
         l = df.filter(regex=re.compile("Length", re.IGNORECASE)).to_numpy()
-        l = np.reshape(l, (l.shape[0],))
+        l = np.reshape(l, (l.shape[0], ))
     else:
         l = None
 
     if np.any(df.columns.str.contains("Width", na=False, case=False)):
         w = df.filter(regex=re.compile("Width", re.IGNORECASE)).to_numpy()
-        w = np.reshape(w, (w.shape[0],))
+        w = np.reshape(w, (w.shape[0], ))
     else:
         w = None
     # 横纵比
@@ -75,7 +75,7 @@ def getAreaData(
     if not a is None and a.ndim > 1:
         # a = a[np.where(np.max(np.sum(a, axis = 0))),:]
         a = a[:, 0]
-    a = np.reshape(a, (a.shape[0],))
+    a = np.reshape(a, (a.shape[0], ))
     return ar, l, w, a, l_min
 
 
@@ -85,16 +85,16 @@ def random_solution_generator(n: int) -> tuple[np.ndarray, np.ndarray]:
     # 生成随机排列
     permutation = np.arange(1, n + 1)
     np.random.shuffle(permutation)
-    
+
     # 生成随机bay划分
     bay = np.zeros(n, dtype=int)
     # 随机选择1-3个位置设置为1(不包括最后一个位置)
-    num_ones = np.random.randint(1, min(4, n-1))
-    positions = np.random.choice(n-1, num_ones, replace=False)
+    num_ones = np.random.randint(1, min(4, n - 1))
+    positions = np.random.choice(n - 1, num_ones, replace=False)
     bay[positions] = 1
     # 确保最后一个位置为1
     bay[-1] = 1
-    
+
     return permutation, bay
 
 
@@ -125,9 +125,8 @@ def binary_solution_generator(area, n, beta, L):
         # print("a/l", a / l)
         # 合格个数
         if beta is not None:
-            qualified_number = np.sum(
-                (aspect_ratio >= beta[:, 0]) & (aspect_ratio <= beta[:, 1])
-            )
+            qualified_number = np.sum((aspect_ratio >= beta[:, 0])
+                                      & (aspect_ratio <= beta[:, 1]))
         else:
             qualified_number = np.sum((w > 1) & (l > 1))
         # 如果合格个数大于等于3/4*n，即此k值可行
@@ -240,13 +239,8 @@ def getEuclideanDistances(x, y):
         np.ndarray: 距离矩阵
     """
     return np.sqrt(
-        np.array(
-            [
-                [(x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2 for j in range(len(x))]
-                for i in range(len(x))
-            ]
-        )
-    )
+        np.array([[(x[i] - x[j])**2 + (y[i] - y[j])**2 for j in range(len(x))]
+                  for i in range(len(x))]))
 
 
 # 计算曼哈顿距离矩阵
@@ -257,10 +251,8 @@ def getManhattanDistances(x, y):
         y (np.ndarray): 设施y坐标
     """
     return np.array(
-        [
-            [abs(x[i] - x[j]) + abs(y[i] - y[j]) for j in range(len(x))]
-            for i in range(len(x))
-        ],
+        [[abs(x[i] - x[j]) + abs(y[i] - y[j]) for j in range(len(x))]
+         for i in range(len(x))],
         dtype=float,
     )
 
@@ -292,7 +284,7 @@ def getMHC(D, F, fbs_model: FBSModel):
 # 计算适应度
 def getFitness(mhc, fac_b, fac_h, fac_limit_aspect):
     aspect_ratio_list = []
-    k = 1
+    k = 3
     non_feasible_counter = 0
     MHC = mhc
 
@@ -304,11 +296,8 @@ def getFitness(mhc, fac_b, fac_h, fac_limit_aspect):
         for i, (b, h) in enumerate(zip(fac_b, fac_h)):
             facility_aspect_ratio = max(b, h) / min(b, h)
             aspect_ratio_list.append(facility_aspect_ratio)
-            if not (
-                min(fac_limit_aspect[i])
-                <= facility_aspect_ratio
-                <= max(fac_limit_aspect[i])
-            ):
+            if not (min(fac_limit_aspect[i]) <= facility_aspect_ratio <= max(
+                    fac_limit_aspect[i])):
                 non_feasible_counter += 1
     aspect_ratio = np.array(aspect_ratio_list)
     fitness = MHC + MHC * (non_feasible_counter**k)
@@ -328,32 +317,35 @@ def StatusUpdatingDevice(fbs_model: FBSModel, a, W, F, fac_limit_aspect_ratio):
 # ---------------------------------------------------FBS局部优化开始---------------------------------------------------
 # Shuffle单区带优化
 def shuffleOptimization(env, bay_index):
-    fac_list = permutationToArray(env.permutation, env.bay)
+    tmp_env = copy.deepcopy(env)
+    fac_list = permutationToArray(tmp_env.fbs_model.permutation,
+                                  tmp_env.fbs_model.bay)
     child_permutation = fac_list[bay_index]
     # 对child_permutation进行shuffle n*n 次
     n = env.n
     max_not_improve_steps = n * 100  # 最大不改进步数
-    best_fitness = env.Fitness.copy()
-    best_permutation = env.permutation.copy()
+    best_fitness = tmp_env.fitness.copy()
+    best_permutation = tmp_env.fbs_model.permutation.copy()
     not_improve_steps = 0
     for _ in range(n * n):
         np.random.shuffle(child_permutation)
         fac_list[bay_index] = child_permutation  # 更新fac_list
         permutation, bay = arrayToPermutation(fac_list)
-        env.reset(layout=(permutation, bay))
-        if env.Fitness < best_fitness:
-            best_fitness = env.Fitness
-            best_permutation = env.permutation
+        tmp_env.reset(fbs_model=FBSModel(permutation, bay))
+        if tmp_env.fitness < best_fitness:
+            best_fitness = tmp_env.fitness
+            best_permutation = tmp_env.fbs_model.permutation
             not_improve_steps = 0
         else:
             not_improve_steps += 1
         if not_improve_steps > max_not_improve_steps:
             break
-    return best_permutation, env.bay
+    return best_permutation, tmp_env.fbs_model.bay
 
 
 # 全排列局部优化
-def fullPermutationOptimization(permutation, bay, a, W, D, F, fac_limit_aspect):
+def fullPermutationOptimization(permutation, bay, a, W, D, F,
+                                fac_limit_aspect):
     # 对当前的状态进行局部搜索，返回新的状态和适应度函数值
     # print("开始局部搜索优化")
     # 局部搜索优化，全排列每一个bay中的设施，并计算适应度函数值，选择最优的排列
@@ -387,18 +379,20 @@ def fullPermutationOptimization(permutation, bay, a, W, D, F, fac_limit_aspect):
 
 # 单区带全排列优化
 def SingleBayGradualArrangementOptimization(env, bay_index):
-    fac_list = permutationToArray(env.permutation, env.bay)
-    best_fitness = env.Fitness.copy()
-    best_permutation = env.permutation.copy()
-    best_bay = env.bay.copy()
+    tmp_env = copy.deepcopy(env)
+    fac_list = permutationToArray(tmp_env.fbs_model.permutation,
+                                  tmp_env.fbs_model.bay)
+    best_fitness = tmp_env.fitness.copy()
+    best_permutation = tmp_env.fbs_model.permutation.copy()
+    best_bay = tmp_env.fbs_model.bay.copy()
     child_permutation = fac_list[bay_index]
     child_permutations = itertools.permutations(child_permutation)
     for child_perm in child_permutations:  # 从单区带的全排列中选择最优的排列
         fac_list[bay_index] = child_perm  # 合并到fac_list
         permutation, bay = arrayToPermutation(fac_list)
-        env.reset(layout=(permutation, bay))
-        if env.Fitness < best_fitness:
-            best_fitness = env.Fitness
+        tmp_env.reset(fbs_model=FBSModel(permutation, bay))
+        if tmp_env.fitness < best_fitness:
+            best_fitness = tmp_env.fitness
             best_permutation = permutation
             best_bay = bay
     return best_permutation, best_bay
@@ -424,7 +418,8 @@ def exchangeOptimization(
             new_perm[i], new_perm[i + 1] = new_perm[i + 1], new_perm[i]
             # 计算当下排列的适应度函数值
             mhc = getMHC(D, F, new_perm)
-            fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(new_perm, bay, a, W)
+            fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(
+                new_perm, bay, a, W)
             fitness = getFitness(mhc, fac_b, fac_h, fac_limit_aspect)
             if fitness < best_fitness:
                 best_fitness = fitness
@@ -435,9 +430,8 @@ def exchangeOptimization(
 
 
 # 排列优化算法
-def arrangementOptimization(
-    permutation: np.ndarray, bay: np.ndarray, instance: str
-):  # -> tuple[ndarray, ndarray]:
+def arrangementOptimization(permutation: np.ndarray, bay: np.ndarray,
+                            instance: str):  # -> tuple[ndarray, ndarray]:
     # 创建env对象
     env = gym.make("fbs-v0", instance=instance)
     env.reset(layout=(permutation, bay))
@@ -482,6 +476,8 @@ def arrangementOptimization(
 # 返回的类型为：(np.ndarray, np.ndarray)
 # 动作装饰器
 def log_action(func):
+
+    @wraps(func)
     def wrapper(*args, **kwargs):
         # 输出方法名
         logging.debug(f"方法名：{func.__name__}")
@@ -522,7 +518,8 @@ def shuffle_single(permutation: np.ndarray, bay: np.ndarray):
     sub_permutation = fac_list[bay_index]  # 得到bay_index对应的子排列
     np.random.shuffle(sub_permutation)  # 将sub_permutation进行shuffle
     fac_list[bay_index] = sub_permutation  # 将sub_permutation放回fac_list
-    permutation, bay = arrayToPermutation(fac_list)  # 将fac_list转换为permutation和bay
+    permutation, bay = arrayToPermutation(
+        fac_list)  # 将fac_list转换为permutation和bay
     return permutation, bay
 
 
@@ -609,15 +606,12 @@ def repair(
         # 计算当前bay的设施的横纵比
         fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
         # 如果当前bay的设施的横纵比不满足条件，则进行修复
-        if not (
-            min(fac_limit_aspect[bay - 1])
-            <= fac_aspect_ratio
-            <= max(fac_limit_aspect[bay - 1])
-        ):
+        if not (min(fac_limit_aspect[bay - 1]) <= fac_aspect_ratio <= max(
+                fac_limit_aspect[bay - 1])):
             # 如果太宽了，说明这个bay中的设施过多，则将其对半分（太宽：横坐标长度/纵坐标长度 > 横纵比）
             if fac_aspect_ratio > max(fac_limit_aspect[bay - 1]):
                 # 将当前bay的设施对半分
-                array[i] = array[i][: len(array[i]) // 2]
+                array[i] = array[i][:len(array[i]) // 2]
                 array.insert(i + 1, array[i])
             # 如果太窄了，说明这个bay中的设施过少，则将当前bay与相邻的bay进行合并（太窄：纵坐标长度/横坐标长度 > 横纵比）
             elif fac_aspect_ratio < min(fac_limit_aspect[bay - 1]):
@@ -638,8 +632,8 @@ def orderCrossover(parent1: FBSModel, parent2: FBSModel):
     offspring1_permutation = [-1] * size  # 初始化第一个子代的设施序列
     offspring2_permutation = [-1] * size  # 初始化第二个子代的设施序列
     start, end = sorted(random.sample(range(size), 2))  # 随机选择交叉点范围
-    offspring1_permutation[start : end + 1] = parent1.permutation[start : end + 1]
-    offspring2_permutation[start : end + 1] = parent2.permutation[start : end + 1]
+    offspring1_permutation[start:end + 1] = parent1.permutation[start:end + 1]
+    offspring2_permutation[start:end + 1] = parent2.permutation[start:end + 1]
     pos1 = (end + 1) % size  # 填充第一个子代的起始位置
     pos2 = (end + 1) % size  # 填充第二个子代的起始位置
     for i in range(size):
@@ -657,12 +651,10 @@ def orderCrossover(parent1: FBSModel, parent2: FBSModel):
         facility1 = offspring1_permutation[i]
         facility2 = offspring2_permutation[i]
         # 在第一个亲本中找出该设施的位置，并继承对应的区带信息
-        index_in_parent1_for_offspring1 = np.where(parent1.permutation == facility1)[0][
-            0
-        ]
-        index_in_parent2_for_offspring2 = np.where(parent2.permutation == facility2)[0][
-            0
-        ]
+        index_in_parent1_for_offspring1 = np.where(
+            parent1.permutation == facility1)[0][0]
+        index_in_parent2_for_offspring2 = np.where(
+            parent2.permutation == facility2)[0][0]
         offspring1_bay[i] = parent1.bay[index_in_parent1_for_offspring1]
         offspring2_bay[i] = parent2.bay[index_in_parent2_for_offspring2]
     offspring1_bay[-1] = 1
@@ -692,7 +684,7 @@ def permutationToArray(permutation, bay):
     start = 0
     for i, val in enumerate(bay):
         if val == 1:
-            array.append(permutation[start : i + 1])
+            array.append(permutation[start:i + 1])
             start = i + 1
     return array
 

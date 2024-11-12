@@ -11,17 +11,16 @@ import FbsEnv.utils.FBSUtil as FBSUtil
 import logging
 from stable_baselines3 import DQN
 
-
 themeName = "基础模型训练"
-instance = "O9-maoyan"
-total_timesteps = 10000
+instance = "AB20-ar3"
+total_timesteps = 40000
 env = gym.make("FbsEnv-v0", instance=instance)
 obs = env.reset()
 current_path = os.path.dirname(os.path.abspath(__file__))
 # 将当前路径的上一级路径作为保存路径
-file_name = themeName + "-DQN-" + instance + "-" + str(total_timesteps)
-save_path = os.path.join(current_path, "..", "models", file_name)
-model = DQN.load(save_path)
+model = DQN.load(
+    f"E:\projects\pythonprojects\gym-flp-fbs\models\基础模型训练-DQN-AB20-ar3-400000"
+)
 
 max_steps = 10000
 current_step = 0
