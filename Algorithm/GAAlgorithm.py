@@ -139,7 +139,7 @@ class GAAlgorithm:
 
 # 测试脚本
 if __name__ == "__main__":
-    instance = "O9-maoyan"  # 假设使用第一个实例
+    instance = "Du62"  # 假设使用第一个实例
     ga = GAAlgorithm(
         population_size=50,
         crossover_rate=0.8,
@@ -148,17 +148,4 @@ if __name__ == "__main__":
         instance=instance,
     )
     best_solution = ga.run()
-
-    # 测试初始化种群
-    populations = ga._initialize_population()
-    for indival in populations:
-        fac_list = indival.permutationToArray()
-        logging.info(fac_list)
-        logging.info(f"此布局的适应度值为：{ga._evaluate_fitness(indival)}")
-    # parent1, parent2 = ga._select_parents()
-    # logging.info(f"父本1为：{parent1.permutationToArray()}")
-    # logging.info(f"父本2为：{parent2.permutationToArray()}")
-    # # 交叉操作
-    # offspring1, offspring2 = ga._crossover(parent1, parent2)
-    # logging.info(f"子本1为：{offspring1.permutationToArray()}")
-    # logging.info(f"子本2为：{offspring2.permutationToArray()}")
+    print(f"最优解为：{best_solution.permutationToArray()}")
