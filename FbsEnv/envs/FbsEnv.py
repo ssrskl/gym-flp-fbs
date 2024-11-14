@@ -81,7 +81,7 @@ class FBSEnv(gym.Env):
             5: "bay_shuffle",
             6: "facility_shuffle",
             7: "permutation_shuffle",
-            # 8: "repair",
+            8: "repair",
         }  # 动作空间
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
 
@@ -93,11 +93,9 @@ class FBSEnv(gym.Env):
             "facility_arrangement":
             spaces.Box(low=0, high=1, shape=(2, self.n), dtype=np.float64),
             "facility_information":
-            spaces.Box(low=0, high=1, shape=(6, self.n), dtype=np.float64),
-            "fitness":
-            spaces.Box(low=0, high=np.inf, shape=(1, ), dtype=np.float64),
+            spaces.Box(low=0, high=1, shape=(6, self.n), dtype=np.float64)
         })
-        self._fitness = np.inf
+        self.fitness = np.inf
 
         # ------------------调试信息------------------
         logger.debug("-------------------init初始化信息------------------")
@@ -111,15 +109,7 @@ class FBSEnv(gym.Env):
         logger.debug(f"设施总宽度W: {self.W}")
         logger.debug("--------------------------------------------------")
 
-    @property
-    def fitness(self) -> float:
-        return self._fitness
-
-    @fitness.setter
-    def fitness(self, fitness: float):
-        self._fitness = fitness
-
-    def reset(self, fbs_model: FBSModel = None): # type: ignore
+    def reset(self, fbs_model: FBSModel = None):
         if fbs_model is None:
             permutation, bay = FBSUtil.binary_solution_generator(
                 self.area, self.n, self.fac_limit_aspect, self.L)  # 采用k分初始解生成器
@@ -157,12 +147,7 @@ class FBSEnv(gym.Env):
                 self.fac_x / self.L,
                 self.fac_y / self.W,
                 self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
-            ]),
-            "fitness":
-            np.array([
-                self.fitness /
-                self.previous_fitness if self.previous_fitness else 1
-            ]),
+            ])
         }
         logger.debug("-------------------reset调试信息------------------")
         logger.debug(f"设施x坐标: {self.fac_x}")
@@ -185,9 +170,8 @@ class FBSEnv(gym.Env):
 
         # 计算约束违反惩罚
         aspect_ratio_penalty = sum(
-            max(0, ar - self.fac_limit_aspect[i][1]) +
-            max(0, self.fac_limit_aspect[i][0] - ar)
-            for i, ar in enumerate(self.fac_aspect_ratio))
+            max(0, ar - self.fac_limit_aspect) +
+            max(0, self.fac_limit_aspect - ar) for ar in self.fac_aspect_ratio)
 
         # 计算fitness改善程度
         fitness_improvement = ((self.fitness - self.previous_fitness) /
@@ -232,10 +216,15 @@ class FBSEnv(gym.Env):
             self.fbs_model.permutation, self.fbs_model.bay = (
                 FBSUtil.permutation_shuffle(self.fbs_model.permutation,
                                             self.fbs_model.bay))
+        elif action_name == "repair":
+            self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.repair(
+                self.fbs_model.permutation, self.fbs_model.bay, self.fac_b,
+                self.fac_h, self.fac_limit_aspect)
         else:
             raise ValueError(f"Invalid action: {action_name}")
 
         self.previous_MHC = self.MHC  # 保存上一步的MHC
+        self.previous_fitness = self.fitness  # 保存上一步的fitness
 
         # 刷新状态
         (
@@ -265,12 +254,7 @@ class FBSEnv(gym.Env):
                 self.fac_x / self.L,
                 self.fac_y / self.W,
                 self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
-            ]),
-            "fitness":
-            np.array([
-                self.fitness /
-                self.previous_fitness if self.previous_fitness else 1
-            ]),
+            ])
         }
         # 计算奖励函数
         reward = self.calculate_reward()
@@ -315,7 +299,7 @@ class FBSEnv(gym.Env):
                               1] + self.fac_h[facility_label - 1] / 2
             line_color = "black"
             if (self.fac_aspect_ratio[facility_label - 1]
-                    > self.fac_limit_aspect[facility_label - 1][1]):
+                    > self.fac_limit_aspect):
                 line_color = "red"
             else:
                 line_color = "green"

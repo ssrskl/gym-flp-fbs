@@ -2,6 +2,7 @@ import numpy as np
 
 
 class FBSModel:
+
     def __init__(self, permutation: list[int], bay: list[int]):
         if len(permutation) != len(bay):
             raise ValueError("permutation和bay的长度必须相同")
@@ -10,11 +11,11 @@ class FBSModel:
 
     @property
     def permutation(self) -> list[int]:
-        return self._permutation.copy()
+        return self._permutation.copy()  # 使用浅拷贝，防止外部修改
 
     @property
     def bay(self) -> list[int]:
-        return self._bay.copy()
+        return self._bay.copy()  # 使用浅拷贝，防止外部修改
 
     @permutation.setter
     def permutation(self, permutation: list[int]):
@@ -34,6 +35,6 @@ class FBSModel:
         start = 0
         for i, val in enumerate(bay_copy):
             if val == 1:
-                array.append(self._permutation[start : i + 1])
+                array.append(self._permutation[start:i + 1])
                 start = i + 1
         return array

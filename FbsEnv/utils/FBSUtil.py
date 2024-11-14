@@ -10,6 +10,7 @@ import colorlog
 from functools import wraps
 from FbsEnv.envs.FBSModel import FBSModel
 import copy
+from loguru import logger
 
 
 class FBSUtils:
@@ -29,32 +30,49 @@ class FBSUtils:
     class CrossoverActions:
 
         @staticmethod
-        def order_crossover(parent1: list[int],
-                            parent2: list[int]) -> tuple[list[int], list[int]]:
-            size = len(parent1)
+        def order_crossover(parent1: FBSModel,
+                            parent2: FBSModel) -> tuple[FBSModel, FBSModel]:
+            parent1_perm = parent1.permutation
+            parent2_perm = parent2.permutation
+            parent1_bay = parent1.bay
+            parent2_bay = parent2.bay
+            # 类型转换
+            if isinstance(parent1_perm, np.ndarray):
+                parent1_perm = parent1_perm.tolist()
+            if isinstance(parent2_perm, np.ndarray):
+                parent2_perm = parent2_perm.tolist()
+            if isinstance(parent1_bay, np.ndarray):
+                parent1_bay = parent1_bay.tolist()
+            if isinstance(parent2_bay, np.ndarray):
+                parent2_bay = parent2_bay.tolist()
+            size = len(parent1_perm)
             startPoint, endPoint = sorted(
                 np.random.choice(size, 2, replace=False))
             logging.info(
                 f"order_crossover-->startPoint: {startPoint}, endPoint: {endPoint}"
             )
-            crossover_part_1 = parent1[startPoint:endPoint + 1]
-            crossover_part_2 = parent2[startPoint:endPoint + 1]
+            crossover_part_1 = parent1_perm[startPoint:endPoint + 1]
+            crossover_part_2 = parent2_perm[startPoint:endPoint + 1]
             # 获取 parent1 中去除 crossover_part_2 的部分
             parent1_remaining = [
-                elem for elem in parent1 if elem not in crossover_part_2
+                elem for elem in parent1_perm if elem not in crossover_part_2
             ]
             # 获取 parent2 中去除 crossover_part_1 的部分
             parent2_remaining = [
-                elem for elem in parent2 if elem not in crossover_part_1
+                elem for elem in parent2_perm if elem not in crossover_part_1
             ]
-
-            offspring_1 = parent1_remaining[:
-                                            startPoint] + crossover_part_2 + parent1_remaining[
-                                                startPoint:]
-            offspring_2 = parent2_remaining[:
-                                            startPoint] + crossover_part_1 + parent2_remaining[
-                                                startPoint:]
-
+            offspring_1_perm = parent1_remaining[:
+                                                 startPoint] + crossover_part_2 + parent1_remaining[
+                                                     startPoint:]
+            offspring_2_perm = parent2_remaining[:
+                                                 startPoint] + crossover_part_1 + parent2_remaining[
+                                                     startPoint:]
+            offspring_1_bay = parent1_bay[:startPoint] + parent2_bay[
+                startPoint:endPoint + 1] + parent1_bay[endPoint + 1:]
+            offspring_2_bay = parent2_bay[:startPoint] + parent1_bay[
+                startPoint:endPoint + 1] + parent2_bay[endPoint + 1:]
+            offspring_1 = FBSModel(offspring_1_perm, offspring_1_bay)
+            offspring_2 = FBSModel(offspring_2_perm, offspring_2_bay)
             return offspring_1, offspring_2
 
 
@@ -100,8 +118,8 @@ def transfer_matrix(matrix: np.ndarray):
 # 获取面积数据
 def getAreaData(
     df,
-) -> tuple[np.ndarray[float], np.ndarray[float], np.ndarray[float],
-           np.ndarray[float], float]:
+) -> tuple[float, np.ndarray[float], np.ndarray[float], np.ndarray[float],
+           float]:
     # 检查Area数据是否存在，存在则转换为numpy数组，否则为None
     if np.any(df.columns.str.contains("Area", na=False, case=False)):
         a = df.filter(regex=re.compile("Area", re.IGNORECASE)).to_numpy()
@@ -123,6 +141,8 @@ def getAreaData(
     if np.any(df.columns.str.contains("Aspect", na=False, case=False)):
         ar = df.filter(regex=re.compile("Aspect", re.IGNORECASE)).to_numpy()
         # print("横纵比数据: ", ar)
+        # 将横纵比数据转换为单一值
+        ar = float(ar[0])
     else:
         ar = None
 
@@ -135,13 +155,6 @@ def getAreaData(
             a = l * max(l_min, max(l))
         else:
             a = w * max(l_min, max(w))
-
-    # 如果横纵比存在上下限则不变，否则下限设置为1
-    if not ar is None and ar.ndim > 1:
-        if ar.shape[1] == 1:
-            ar = np.hstack((np.ones((ar.shape[0], 1)), ar))
-        else:
-            pass
     if not a is None and a.ndim > 1:
         # a = a[np.where(np.max(np.sum(a, axis = 0))),:]
         a = a[:, 0]
@@ -150,7 +163,7 @@ def getAreaData(
 
 
 # 随机解生成器
-def random_solution_generator(n: int) -> tuple[np.ndarray, np.ndarray]:
+def random_solution_generator(n: int) -> tuple[list[int], list[int]]:
     """生成随机解"""
     # 生成随机排列
     permutation = np.arange(1, n + 1)
@@ -165,7 +178,7 @@ def random_solution_generator(n: int) -> tuple[np.ndarray, np.ndarray]:
     # 确保最后一个位置为1
     bay[-1] = 1
 
-    return permutation, bay
+    return permutation.tolist(), bay.tolist()
 
 
 # k分初始解生成器(输入：面积数据a，设施数n，横纵比限制beta，厂房x轴长度L)
@@ -183,9 +196,6 @@ def binary_solution_generator(area, n, beta, L):
     permutation = permutation[np.argsort(area[permutation - 1])]
     # 对a也进行排序
     area = np.sort(area)
-    # 对beta也按照a的顺序进行排序
-    if beta is not None:
-        beta = np.array([beta[i - 1] for i in permutation])
     while k <= n:
         # 计算W的k分
         l = L / k
@@ -195,8 +205,8 @@ def binary_solution_generator(area, n, beta, L):
         # print("a/l", a / l)
         # 合格个数
         if beta is not None:
-            qualified_number = np.sum((aspect_ratio >= beta[:, 0])
-                                      & (aspect_ratio <= beta[:, 1]))
+            qualified_number = np.sum((aspect_ratio >= 1)
+                                      & (aspect_ratio <= beta))
         else:
             qualified_number = np.sum((w > 1) & (l > 1))
         # 如果合格个数大于等于3/4*n，即此k值可行
@@ -366,8 +376,7 @@ def getFitness(mhc, fac_b, fac_h, fac_limit_aspect):
         for i, (b, h) in enumerate(zip(fac_b, fac_h)):
             facility_aspect_ratio = max(b, h) / min(b, h)
             aspect_ratio_list.append(facility_aspect_ratio)
-            if not (min(fac_limit_aspect[i]) <= facility_aspect_ratio <= max(
-                    fac_limit_aspect[i])):
+            if not (1 <= facility_aspect_ratio <= fac_limit_aspect):
                 non_feasible_counter += 1
     aspect_ratio = np.array(aspect_ratio_list)
     fitness = MHC + MHC * (non_feasible_counter**k)
@@ -666,28 +675,39 @@ def repair(
     bay: np.ndarray,
     fac_b: np.ndarray,
     fac_h: np.ndarray,
-    fac_limit_aspect: np.ndarray,
+    fac_limit_aspect: float,
 ):
     """修复bay"""
     # 转换为二维数组
     array = permutationToArray(permutation, bay)
     # 遍历每个bay
     for i, bay in enumerate(array):
-        # 计算当前bay的设施的横纵比
+        tmp_array = array[:]
+        # 计算所有的设施的横纵比
         fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
+        current_bay_fac_aspect_ratio = np.array(
+            [fac_aspect_ratio[b - 1] for b in bay])
+        current_bay_fac_hv_ratio = np.array(
+            [fac_b[b - 1] / fac_h[b - 1] for b in bay])
         # 如果当前bay的设施的横纵比不满足条件，则进行修复
-        if not (min(fac_limit_aspect[bay - 1]) <= fac_aspect_ratio <= max(
-                fac_limit_aspect[bay - 1])):
-            # 如果太宽了，说明这个bay中的设施过多，则将其对半分（太宽：横坐标长度/纵坐标长度 > 横纵比）
-            if fac_aspect_ratio > max(fac_limit_aspect[bay - 1]):
+        if np.any((current_bay_fac_aspect_ratio < 1)
+                  | (current_bay_fac_aspect_ratio > fac_limit_aspect)):
+            # logger.info(f"不满足条件")
+            # 如果太宽了，说明这个bay中的设施过多，则将其对半分（太宽：横坐标长度/纵坐标长度 > 横纵比）这里使用bay的平均值
+            if np.any(current_bay_fac_hv_ratio > fac_limit_aspect):
+                # print(f"有设施太宽了")
                 # 将当前bay的设施对半分
-                array[i] = array[i][:len(array[i]) // 2]
-                array.insert(i + 1, array[i])
+                split_array = np.array_split(tmp_array[i], 2)
+                tmp_array[i] = split_array[0]
+                tmp_array.insert(i + 1, split_array[1])
             # 如果太窄了，说明这个bay中的设施过少，则将当前bay与相邻的bay进行合并（太窄：纵坐标长度/横坐标长度 > 横纵比）
-            elif fac_aspect_ratio < min(fac_limit_aspect[bay - 1]):
+            else:
+                # print(f"有设施太窄了")
                 # 将当前bay的设施与相邻的bay进行合并
-                array[i] = array[i] + array[i + 1]
-                array.pop(i + 1)
+                tmp_array[i] = tmp_array[i] + tmp_array[i + 1]
+                tmp_array.pop(i + 1)
+    array = tmp_array
+    # logger.info(f"修复后的bay：{array}")
     # 转换为排列和bay
     permutation, bay = arrayToPermutation(array)
     return permutation, bay

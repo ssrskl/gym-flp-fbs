@@ -8,21 +8,13 @@ from FbsEnv.envs.FBSModel import FBSModel
 
 instance = "O9-maoyan"
 
-parent1 = gym.make("FbsEnv-v0", instance=instance)
-parent1.reset()
+parent1 = FBSModel([1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6])
+parent2 = FBSModel([6, 5, 4, 3, 2, 1], [6, 5, 4, 3, 2, 1])
 
-parent2 = gym.make("FbsEnv-v0", instance=instance)
-parent2.reset()
+offspring1, offspring2 = FBSUtils.CrossoverActions.order_crossover(
+    parent1, parent2)
 
-logging.info("打印亲本信息")
-logging.info(parent1.fbs_model.permutation)
-logging.info(parent1.fbs_model.bay)
-logging.info(parent2.fbs_model.permutation)
-logging.info(parent2.fbs_model.bay)
-
-offspring1_permutation, offspring2_permutation = (
-    FBSUtils.CrossoverActions.order_crossover(parent1.fbs_model.permutation,
-                                              parent2.fbs_model.permutation))
-
-logging.info(offspring1_permutation)
-logging.info(offspring2_permutation)
+logging.info(offspring1.permutation)
+logging.info(offspring1.bay)
+logging.info(offspring2.permutation)
+logging.info(offspring2.bay)

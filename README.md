@@ -37,3 +37,49 @@ pip install -e .
 ```bash
 pip install -U nptyping
 ```
+
+## 易错点
+
+### 函数参数包含可变类型
+
+当函数参数包含可变类型时，需要注意
+
+```python
+def func(n,a: list[int]=[]):
+    a.append(n)
+    return a
+func1 = func(1) # [1]
+func2 = func(2) # [1,2]
+```
+
+可以稍做改变
+
+```python
+def func(n,a: list[int]=None):
+    if a is None:
+        a = []
+    a.append(n)
+    return a
+```
+
+当把字典，列表等传递给函数的时候，需要注意
+
+```python
+def func(lst):
+    lst2 = lst
+    lst2.append(1)
+    return lst2
+lst = [1,2,3]
+func(lst) # lst = [1,2,3,1]
+```
+
+稍微不注意就会导致列表被修改，所以可以稍做改变
+
+```python
+def func(lst):
+    lst2 = lst[:] # lst.copy()
+    lst2.append(1)
+    return lst2
+lst = [1,2,3]
+func(lst) # lst = [1,2,3,1]
+```

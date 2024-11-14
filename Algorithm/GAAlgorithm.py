@@ -7,6 +7,7 @@ import numpy as np
 from FbsEnv.envs.FBSModel import FBSModel
 import FbsEnv
 from FbsEnv.utils import FBSUtil
+from FbsEnv.utils.FBSUtil import FBSUtils
 import logging
 
 
@@ -50,7 +51,7 @@ class GAAlgorithm:
         self.env.reset(fbs_model=fbs_model)
         return self.env.fitness
 
-    def _select_parents(self):
+    def _select_parents(self) -> tuple[FBSModel, FBSModel]:
         """使用轮盘赌选择两个父代个体"""
         fitness_values = np.array(
             [self._evaluate_fitness(ind) for ind in self.population])
@@ -60,13 +61,13 @@ class GAAlgorithm:
                                    p=selection_probabilities)
         return parents[0], parents[1]
 
-    def _crossover(self, parent1: FBSModel, parent2: FBSModel):
+    def _crossover(self, parent1: FBSModel,
+                   parent2: FBSModel) -> tuple[FBSModel, FBSModel]:
         """执行交叉操作，生成两个子代个体"""
         if np.random.rand() < self.crossover_rate:
-            offspring1_perm, offspring1_bay, offspring2_perm, offspring2_bay = (
-                FBSUtil.orderCrossover(parent1, parent2))
-            offspring1 = FBSModel(offspring1_perm, offspring1_bay)
-            offspring2 = FBSModel(offspring2_perm, offspring2_bay)
+            logging.info("执行交叉操作")
+            offspring1, offspring2 = FBSUtils.CrossoverActions.order_crossover(
+                parent1, parent2)
             return offspring1, offspring2
         return parent1, parent2
 
@@ -138,7 +139,7 @@ class GAAlgorithm:
 
 # 测试脚本
 if __name__ == "__main__":
-    instance = "O7-maoyan"  # 假设使用第一个实例
+    instance = "O9-maoyan"  # 假设使用第一个实例
     ga = GAAlgorithm(
         population_size=50,
         crossover_rate=0.8,
@@ -154,10 +155,10 @@ if __name__ == "__main__":
         fac_list = indival.permutationToArray()
         logging.info(fac_list)
         logging.info(f"此布局的适应度值为：{ga._evaluate_fitness(indival)}")
-    parent1, parent2 = ga._select_parents()
-    logging.info(f"父本1为：{parent1.permutationToArray()}")
-    logging.info(f"父本2为：{parent2.permutationToArray()}")
-    # 交叉操作
-    offspring1, offspring2 = ga._crossover(parent1, parent2)
-    logging.info(f"子本1为：{offspring1.permutationToArray()}")
-    logging.info(f"子本2为：{offspring2.permutationToArray()}")
+    # parent1, parent2 = ga._select_parents()
+    # logging.info(f"父本1为：{parent1.permutationToArray()}")
+    # logging.info(f"父本2为：{parent2.permutationToArray()}")
+    # # 交叉操作
+    # offspring1, offspring2 = ga._crossover(parent1, parent2)
+    # logging.info(f"子本1为：{offspring1.permutationToArray()}")
+    # logging.info(f"子本2为：{offspring2.permutationToArray()}")
