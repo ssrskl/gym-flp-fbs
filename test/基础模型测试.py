@@ -10,16 +10,17 @@ from FbsEnv.envs.FBSModel import FBSModel
 import FbsEnv.utils.FBSUtil as FBSUtil
 import logging
 from stable_baselines3 import DQN
+from loguru import logger
 
 themeName = "基础模型训练"
-instance = "AB20-ar3"
-total_timesteps = 40000
+instance = "O9-maoyan"
+total_timesteps = 100_000
 env = gym.make("FbsEnv-v0", instance=instance)
 obs = env.reset()
 current_path = os.path.dirname(os.path.abspath(__file__))
 # 将当前路径的上一级路径作为保存路径
 model = DQN.load(
-    f"E:\projects\pythonprojects\gym-flp-fbs\models\基础模型训练-DQN-AB20-ar3-400000"
+    f"E:\projects\pythonprojects\gym-flp-fbs\models\基础模型训练-DQN-O9-maoyan-100000"
 )
 
 max_steps = 10000
@@ -29,6 +30,7 @@ best_solution = FBSModel([], [])
 while current_step < max_steps:
     current_step += 1
     action, _ = model.predict(obs)
+    logger.info(f"当前动作: {action}")
     obs, reward, done, info = env.step(action)
     if env.fitness < best_fitness:
         best_fitness = env.fitness

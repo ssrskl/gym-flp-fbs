@@ -669,7 +669,6 @@ def permutation_shuffle(permutation: np.ndarray, bay: np.ndarray):
 
 
 # 修复bay
-@log_action
 def repair(
     permutation: np.ndarray,
     bay: np.ndarray,
@@ -678,10 +677,12 @@ def repair(
     fac_limit_aspect: float,
 ):
     """修复bay"""
+    # logger.info(f"{permutation}，{bay}")
     # 转换为二维数组
     array = permutationToArray(permutation, bay)
     # 遍历每个bay
     for i, bay in enumerate(array):
+        # logger.info(f"当前第{i}个区带：{bay}")
         tmp_array = array[:]
         # 计算所有的设施的横纵比
         fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
@@ -692,21 +693,29 @@ def repair(
         # 如果当前bay的设施的横纵比不满足条件，则进行修复
         if np.any((current_bay_fac_aspect_ratio < 1)
                   | (current_bay_fac_aspect_ratio > fac_limit_aspect)):
-            # logger.info(f"不满足条件")
+            # logger.info(f"区带{i}不满足条件")
             # 如果太宽了，说明这个bay中的设施过多，则将其对半分（太宽：横坐标长度/纵坐标长度 > 横纵比）这里使用bay的平均值
             if np.any(current_bay_fac_hv_ratio > fac_limit_aspect):
-                # print(f"有设施太宽了")
-                # 将当前bay的设施对半分
+                # print(f"区带{i}有设施太宽了")
+                # 将当前bay的设施随机对半分
+                np.random.shuffle(tmp_array[i])
                 split_array = np.array_split(tmp_array[i], 2)
                 tmp_array[i] = split_array[0]
                 tmp_array.insert(i + 1, split_array[1])
             # 如果太窄了，说明这个bay中的设施过少，则将当前bay与相邻的bay进行合并（太窄：纵坐标长度/横坐标长度 > 横纵比）
             else:
-                # print(f"有设施太窄了")
+                # print(f"区带{i}有设施太窄了")
                 # 将当前bay的设施与相邻的bay进行合并
-                tmp_array[i] = tmp_array[i] + tmp_array[i + 1]
-                tmp_array.pop(i + 1)
-    array = tmp_array
+                if i + 1 < len(tmp_array):
+                    tmp_array[i] = np.concatenate(
+                        (tmp_array[i], tmp_array[i + 1]))
+                    tmp_array.pop(i + 1)
+                else:
+                    tmp_array[i] = np.concatenate(
+                        (tmp_array[i], tmp_array[i - 1]))
+                    tmp_array.pop(i - 1)
+            array = tmp_array
+            break
     # logger.info(f"修复后的bay：{array}")
     # 转换为排列和bay
     permutation, bay = arrayToPermutation(array)

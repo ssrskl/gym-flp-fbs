@@ -28,12 +28,18 @@
 # endPoint = 4
 # print(fill_without_duplicates(A, B, startPoint, endPoint))
 
+# import numpy as np
+# from loguru import logger
+
+# a = np.array([1, 2, 3, 4, 5])
+
+# if np.all(1 <= a) and np.all(a <= 2):
+#     logger.info("满足条件")
+# else:
+#     logger.info("不满足条件")
+
 import numpy as np
-from loguru import logger
 
 a = np.array([1, 2, 3, 4, 5])
-
-if np.all(1 <= a) and np.all(a <= 2):
-    logger.info("满足条件")
-else:
-    logger.info("不满足条件")
+b = np.array([1, 2, 3, 4, 5, 6])
+print(np.concatenate((a, b)))

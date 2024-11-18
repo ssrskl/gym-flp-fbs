@@ -73,27 +73,23 @@ class FBSEnv(gym.Env):
         self.W = self.LayoutWidths[self.instance]  # 厂房的宽度
         total_area = np.sum(self.area)  # 设施的总面积
         self.actions = {
-            0: "facility_swap_single",
-            1: "shuffle_single",
-            2: "facility_swap",
-            3: "bay_flip",
-            4: "bay_swap",
-            5: "bay_shuffle",
-            6: "facility_shuffle",
-            7: "permutation_shuffle",
-            8: "repair",
+            # 0: "facility_swap_single",
+            # 1: "shuffle_single",
+            0: "facility_swap",
+            1: "bay_flip",
+            2: "bay_swap",
+            # 5: "bay_shuffle",
+            # 6: "facility_shuffle",
+            # 7: "permutation_shuffle",
+            3: "repair",
+            4: "idle",
         }  # 动作空间
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
 
         # 保持观察空间为字典形式
         self.observation_space = spaces.Dict({
-            "facility_distance":
-            spaces.Box(low=0, high=1, shape=(self.n, self.n),
-                       dtype=np.float64),
-            "facility_arrangement":
-            spaces.Box(low=0, high=1, shape=(2, self.n), dtype=np.float64),
             "facility_information":
-            spaces.Box(low=0, high=1, shape=(6, self.n), dtype=np.float64)
+            spaces.Box(low=0, high=1, shape=(4, self.n), dtype=np.float64)
         })
         self.fitness = np.inf
 
@@ -134,19 +130,12 @@ class FBSEnv(gym.Env):
         self.previous_fitness = self.fitness  # 初始化上一次的适应度值
         # 更新状态字典
         self.state = {
-            "facility_distance":
-            self.D / np.max(self.D),
-            "facility_arrangement":
-            np.array([self.fbs_model.permutation, self.fbs_model.bay]) /
-            self.n,
             "facility_information":
             np.array([
                 self.fac_h / self.W,
                 self.fac_b / self.L,
-                self.area / np.max(self.area),
                 self.fac_x / self.L,
                 self.fac_y / self.W,
-                self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
             ])
         }
         logger.debug("-------------------reset调试信息------------------")
@@ -165,39 +154,40 @@ class FBSEnv(gym.Env):
 
     def calculate_reward(self):
         # 计算MHC改善程度
-        mhc_improvement = ((self.previous_MHC - self.MHC) /
-                           self.previous_MHC if self.previous_MHC else 0)
+        # mhc_improvement = ((self.previous_MHC - self.MHC) /
+        #                    self.previous_MHC if self.previous_MHC else 0)
 
         # 计算约束违反惩罚
-        aspect_ratio_penalty = sum(
-            max(0, ar - self.fac_limit_aspect) +
-            max(0, self.fac_limit_aspect - ar) for ar in self.fac_aspect_ratio)
+        # aspect_ratio_penalty = sum(
+        #     max(0, ar - self.fac_limit_aspect) +
+        #     max(0, self.fac_limit_aspect - ar) for ar in self.fac_aspect_ratio)
 
         # 计算fitness改善程度
-        fitness_improvement = ((self.fitness - self.previous_fitness) /
-                               self.previous_fitness
-                               if self.previous_fitness else 0)
+        fitness_improvement = ((self.previous_fitness - self.fitness) /
+                               self.fitness if self.previous_fitness else 0)
 
-        # 综合奖励计算
+        # # 综合奖励计算
         reward = (
-            0.4 * mhc_improvement  # MHC改善权重
-            + 0.5 * fitness_improvement  # 整体fitness改善权重
-            + 0.1 * aspect_ratio_penalty  # 约束违反惩罚权重
+            # 0.4 * mhc_improvement  # MHC改善权重
+            1 * fitness_improvement  # 整体fitness改善权重
+            # + 0.2 * aspect_ratio_penalty  # 约束违反惩罚权重
         )
-
+        # reward = -self.fitness
+        # 适应度和MHC的惩罚
+        # reward = self.MHC - self.fitness
         return reward
 
     def step(self, action):
         # 根据action执行相应的操作
         action_name = self.actions[int(action)]
-        if action_name == "facility_swap_single":
-            self.fbs_model.permutation, self.fbs_model.bay = (
-                FBSUtil.facility_swap_single(self.fbs_model.permutation,
-                                             self.fbs_model.bay))
-        elif action_name == "shuffle_single":
-            self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.shuffle_single(
-                self.fbs_model.permutation, self.fbs_model.bay)
-        elif action_name == "facility_swap":
+        # if action_name == "facility_swap_single":
+        # self.fbs_model.permutation, self.fbs_model.bay = (
+        #     FBSUtil.facility_swap_single(self.fbs_model.permutation,
+        #                                  self.fbs_model.bay))
+        # elif action_name == "shuffle_single":
+        # self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.shuffle_single(
+        # self.fbs_model.permutation, self.fbs_model.Xbay)
+        if action_name == "facility_swap":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.facility_swap(
                 self.fbs_model.permutation, self.fbs_model.bay)
         elif action_name == "bay_flip":
@@ -206,13 +196,13 @@ class FBSEnv(gym.Env):
         elif action_name == "bay_swap":
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.bay_swap(
                 self.fbs_model.permutation, self.fbs_model.bay)
-        elif action_name == "bay_shuffle":
-            self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.bay_shuffle(
-                self.fbs_model.permutation, self.fbs_model.bay)
-        elif action_name == "facility_shuffle":
-            self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.facility_shuffle(
-                self.fbs_model.permutation, self.fbs_model.bay)
-        elif action_name == "permutation_shuffle":
+            # elif action_name == "bay_shuffle":
+            #     self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.bay_shuffle(
+            #         self.fbs_model.permutation, self.fbs_model.bay)
+            # elif action_name == "facility_shuffle":
+            #     self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.facility_shuffle(
+            #         self.fbs_model.permutation, self.fbs_model.bay)
+            # elif action_name == "permutation_shuffle":
             self.fbs_model.permutation, self.fbs_model.bay = (
                 FBSUtil.permutation_shuffle(self.fbs_model.permutation,
                                             self.fbs_model.bay))
@@ -220,6 +210,8 @@ class FBSEnv(gym.Env):
             self.fbs_model.permutation, self.fbs_model.bay = FBSUtil.repair(
                 self.fbs_model.permutation, self.fbs_model.bay, self.fac_b,
                 self.fac_h, self.fac_limit_aspect)
+        elif action_name == "idle":
+            pass
         else:
             raise ValueError(f"Invalid action: {action_name}")
 
@@ -241,19 +233,12 @@ class FBSEnv(gym.Env):
                                          self.F, self.fac_limit_aspect)
         # 更新状态字典
         self.state = {
-            "facility_distance":
-            self.D / np.max(self.D),
-            "facility_arrangement":
-            np.array([self.fbs_model.permutation, self.fbs_model.bay]) /
-            self.n,
             "facility_information":
             np.array([
                 self.fac_h / self.W,
                 self.fac_b / self.L,
-                self.area / np.max(self.area),
                 self.fac_x / self.L,
                 self.fac_y / self.W,
-                self.fac_aspect_ratio / np.max(self.fac_aspect_ratio),
             ])
         }
         # 计算奖励函数
