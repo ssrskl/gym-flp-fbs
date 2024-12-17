@@ -12,6 +12,8 @@ pip install gym
 pip install numpy pygame
 pip install matplotlib
 pip install stable-baselines3[extra]
+# 安装loguru，日志模块
+pip install loguru
 # 安装colorlog，彩色日志
 pip install colorlog
 # 安装ipykernel，用于在jupyter notebook中使用自定义的gym环境

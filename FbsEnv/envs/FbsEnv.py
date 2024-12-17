@@ -47,7 +47,7 @@ class FBSEnv(gym.Env):
     def __init__(self, instance=None, seed=None, options=None):
         super(FBSEnv, self).__init__()
         with open(
-                "E://projects//pythonprojects//gym-flp-fbs//FbsEnv//files//maoyan_cont_instances.pkl",
+                r"E:\Codes\pythons\gym-flp-fbs\FbsEnv\files\maoyan_cont_instances.pkl",
                 "rb",
         ) as file:
             (

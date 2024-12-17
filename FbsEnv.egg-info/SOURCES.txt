@@ -5,5 +5,6 @@ FbsEnv.egg-info/PKG-INFO
 FbsEnv.egg-info/SOURCES.txt
 FbsEnv.egg-info/dependency_links.txt
 FbsEnv.egg-info/top_level.txt
+FbsEnv/envs/FBSModel.py
 FbsEnv/envs/FbsEnv.py
 FbsEnv/envs/__init__.py
