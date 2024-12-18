@@ -7,8 +7,8 @@ import FbsEnv
 import gym
 from FbsEnv.envs.FBSModel import FBSModel
 
-instance_name = "Du62"
-fitness = "1283657048"
+instance_name = "AB20-ar3"
+fitness = "unknown"
 path = rf"E:\Codes\pythons\gym-flp-fbs\Files\SolutionSet\{instance_name}-{fitness}.csv"
 
 
