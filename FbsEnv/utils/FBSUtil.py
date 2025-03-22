@@ -118,48 +118,22 @@ def transfer_matrix(matrix: np.ndarray):
 # 获取面积数据
 def getAreaData(
     df,
-) -> tuple[float, np.ndarray[float], np.ndarray[float], np.ndarray[float],
-           float]:
-    # 检查Area数据是否存在，存在则转换为numpy数组，否则为None
-    if np.any(df.columns.str.contains("Area", na=False, case=False)):
-        a = df.filter(regex=re.compile("Area", re.IGNORECASE)).to_numpy()
-    else:
-        a = None
-
-    if np.any(df.columns.str.contains("Length", na=False, case=False)):
-        l = df.filter(regex=re.compile("Length", re.IGNORECASE)).to_numpy()
-        l = np.reshape(l, (l.shape[0], ))
-    else:
-        l = None
-
-    if np.any(df.columns.str.contains("Width", na=False, case=False)):
-        w = df.filter(regex=re.compile("Width", re.IGNORECASE)).to_numpy()
-        w = np.reshape(w, (w.shape[0], ))
-    else:
-        w = None
-    # 横纵比
-    if np.any(df.columns.str.contains("Aspect", na=False, case=False)):
-        ar = df.filter(regex=re.compile("Aspect", re.IGNORECASE)).to_numpy()
-        # print("横纵比数据: ", ar)
-        # 将横纵比数据转换为单一值
-        ar = float(ar[0])
-    else:
-        ar = None
-
-    l_min = 1  # 最小长度
-    # 面积数据不存在，则根据长度和宽度计算面积
-    if a is None:
-        if not l is None and not w is None:
-            a = l * w
-        elif not l is None:
-            a = l * max(l_min, max(l))
-        else:
-            a = w * max(l_min, max(w))
-    if not a is None and a.ndim > 1:
-        # a = a[np.where(np.max(np.sum(a, axis = 0))),:]
-        a = a[:, 0]
-    a = np.reshape(a, (a.shape[0], ))
-    return ar, l, w, a, l_min
+) -> tuple[np.ndarray, float]:
+    """
+    从 DataFrame 中提取或计算面积相关数据。
+    参数:
+        df (pd.DataFrame): 输入的 DataFrame，可能包含面积、长度、宽度和横纵比数据。
+    返回:
+        tuple: 面积areas和横纵比aspects
+    """
+     # 获取包含特定关键词的列并转换为一维数组
+    def get_column_data(df, pattern):
+        cols = df.filter(regex=re.compile(pattern, re.IGNORECASE)).columns
+        return df[cols].to_numpy().flatten() if not cols.empty else None
+    areas = get_column_data(df, 'Area')
+    aspects = get_column_data(df, 'Aspect')
+    aspects = aspects[0] if aspects is not None else 99
+    return areas, aspects
 
 
 # 随机解生成器
@@ -267,39 +241,35 @@ def _find_best_partition(arr, k):
     return best_partition, np.split(arr, best_partition)
 
 
+
 # 计算设施坐标和尺寸
-def getCoordinates_mao(fbs_model: FBSModel, area, W):
+def getCoordinates_mao(fbs_model: FBSModel, area, H):
     permutation = fbs_model.permutation
     bay = fbs_model.bay
-    # 将排列按照划分点分割成多个子数组，每个子数组代表一个区段的排列
-    bays = permutationToArray(permutation, bay)
-    # bays = np.split(permutation, indices_or_sections=np.where(bay == 1)[0][:-1] + 1)
-
+    bays = permutationToArray(permutation, bay) # 将排列按照划分点分割成多个子数组，每个子数组代表一个区段的排列
     # 初始化长度、宽度和坐标数组
-    lengths = np.zeros(len(permutation))
-    widths = np.zeros(len(permutation))
-    fac_x = np.zeros(len(permutation))
-    fac_y = np.zeros(len(permutation))
-
+    n  = len(permutation)
+    lengths = np.zeros(n) # 每个设施的长度
+    widths = np.zeros(n) # 每个设施的宽度
+    fac_x = np.zeros(n) # 每个设施的x坐标
+    fac_y = np.zeros(n) # 每个设施的y坐标
+    # 计算每个区带的坐标和尺寸
     x = 0
-    start = 0
+    start = 0 # 记录当前子数组的起始索引
     # 从上向下排列
     for b in bays:
-        areas = [area[i - 1] for i in b]
-        end = start + len(areas)
-
+        indices = np.array(b) - 1
+        bay_areas = area[indices]
         # 计算每个设施的长度和宽度
-        lengths[start:end] = np.sum(areas) / W
-        widths[start:end] = areas / lengths[start:end]
-
+        widths[start:start + len(bay_areas)] = np.sum(bay_areas) / H
+        lengths[start:start + len(bay_areas)] = bay_areas / widths[start:start + len(bay_areas)]
         # 计算设施的x坐标
-        fac_x[start:end] = lengths[start:end] * 0.5 + x
-        x += np.sum(areas) / W
-
+        fac_x[start:start + len(bay_areas)] = widths[start:start + len(bay_areas)] * 0.5 + x
+        x += np.sum(bay_areas) / H
         # 计算设施的y坐标
-        y = np.cumsum(widths[start:end]) - widths[start:end] * 0.5
-        fac_y[start:end] = y
-        start = end
+        y = np.cumsum(lengths[start:start + len(bay_areas)]) - lengths[start:start + len(bay_areas)] * 0.5
+        fac_y[start:start + len(bay_areas)] = y
+        start += len(bay_areas)
     # 顺序恢复
     order = np.argsort(permutation)
     fac_x = fac_x[order]
@@ -346,6 +316,9 @@ def permutationMatrix(a):
 
 
 def getTransportIntensity(D, F, fbs_model: FBSModel):
+    logger.info("计算物流强度矩阵")
+    logger.info(f"D: \n{D}")
+    logger.info(f"F: \n{F}")
     permutation = fbs_model.permutation
     P = permutationMatrix(permutation)
     return np.dot(np.dot(D, P), np.dot(F, P.T))
@@ -355,38 +328,58 @@ def getTransportIntensity(D, F, fbs_model: FBSModel):
 def getMHC(D, F, fbs_model: FBSModel):
     permutation = fbs_model.permutation
     P = permutationMatrix(permutation)
+    logger.info(f"P: \n{P}")
     # MHC = np.sum(np.tril(np.dot(P.T, np.dot(D, P))) * (F.T))
     # MHC = np.sum(np.triu(D) * (F))
     MHC = np.sum(D * F)
+    # transport_intensity = np.dot(np.dot(D, P), np.dot(F, P.T))
+    # MHC = np.trace(transport_intensity)
     return MHC
 
 
 # 计算适应度
-def getFitness(mhc, fac_b, fac_h, fac_limit_aspect):
-    aspect_ratio_list = []
-    k = 3
-    non_feasible_counter = 0
+import numpy as np
+
+def getFitness(mhc, fac_b, fac_h, fac_limit_aspect=None, k=3):
+    """
+    计算适应度。
+
+    参数:
+    mhc: float, MHC 的值
+    fac_b: list or np.ndarray, 设施的宽度
+    fac_h: list or np.ndarray, 设施的高度
+    fac_limit_aspect: float or None, 宽高比的限制值，若为 None 则不限制宽高比
+    k: int, 惩罚项的指数，默认为 3
+
+    返回:
+    fitness: float, 适应度值
+    """
+    # 将输入转换为 NumPy 数组
+    fac_b = np.array(fac_b)
+    fac_h = np.array(fac_h)
     MHC = mhc
 
     if fac_limit_aspect is None:
-        for i, (b, h) in enumerate(zip(fac_b, fac_h)):
-            if b < 1 or h < 1:
-                non_feasible_counter += 1
+        # 检查宽度和高度是否都 >= 1
+        non_feasible = (fac_b < 1) | (fac_h < 1)
     else:
-        for i, (b, h) in enumerate(zip(fac_b, fac_h)):
-            facility_aspect_ratio = max(b, h) / min(b, h)
-            aspect_ratio_list.append(facility_aspect_ratio)
-            if not (1 <= facility_aspect_ratio <= fac_limit_aspect):
-                non_feasible_counter += 1
-    aspect_ratio = np.array(aspect_ratio_list)
-    fitness = MHC + MHC * (non_feasible_counter**k)
+        # 计算宽高比
+        aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
+        # 检查宽高比是否在 1 到 fac_limit_aspect 之间
+        non_feasible = (aspect_ratio < 1) | (aspect_ratio > fac_limit_aspect)
+
+    # 计算不可行设施的数量
+    non_feasible_counter = np.sum(non_feasible)
+    # 计算适应度
+    fitness = MHC + MHC * (non_feasible_counter ** k)
     return fitness
 
 
-def StatusUpdatingDevice(fbs_model: FBSModel, a, W, F, fac_limit_aspect_ratio):
-    fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(fbs_model, a, W)
+def StatusUpdatingDevice(fbs_model: FBSModel, a, H, F, fac_limit_aspect_ratio):
+    fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(fbs_model, a, H)
     fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
-    D = getManhattanDistances(fac_x, fac_y)
+    D = getManhattanDistances(fac_x, fac_y) # 曼哈顿距离
+    # D = getEuclideanDistances(fac_x, fac_y) # 欧几里得距离
     TM = getTransportIntensity(D, F, fbs_model)
     mhc = getMHC(D, F, fbs_model)
     fitness = getFitness(mhc, fac_b, fac_h, fac_limit_aspect_ratio)
@@ -442,7 +435,7 @@ def fullPermutationOptimization(permutation, bay, a, W, D, F,
         convert_perm = np.concatenate(perm)
         print("convert_perm:", convert_perm)
         # 计算当前排列下的设施参数信息
-        facx, facy, facb, fach = getCoordinates_mao(convert_perm, bay, a, W)
+        facx, facy, facb, fach = getCoordinates_mao(convert_perm, bay, a, H)
         MHC = getMHC(D, F, convert_perm)
         # 计算适应度函数值
         fitness = getFitness(MHC, facb, fach, fac_limit_aspect)
@@ -498,7 +491,7 @@ def exchangeOptimization(
             # 计算当下排列的适应度函数值
             mhc = getMHC(D, F, new_perm)
             fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(
-                new_perm, bay, a, W)
+                new_perm, bay, a, H)
             fitness = getFitness(mhc, fac_b, fac_h, fac_limit_aspect)
             if fitness < best_fitness:
                 best_fitness = fitness
@@ -802,3 +795,4 @@ def arrayToPermutation(array):
 
 def sayHello():
     logging.info("Hello World")
+

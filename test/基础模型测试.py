@@ -20,7 +20,7 @@ obs = env.reset()
 current_path = os.path.dirname(os.path.abspath(__file__))
 # 将当前路径的上一级路径作为保存路径
 model = DQN.load(
-    f"E:\projects\pythonprojects\gym-flp-fbs\models\基础模型训练-DQN-O9-maoyan-100000"
+    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-DQN-O9-maoyan-40000"
 )
 
 max_steps = 10000

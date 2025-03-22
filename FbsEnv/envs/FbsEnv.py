@@ -1,3 +1,4 @@
+import sys
 import pickle
 import uuid
 import gym
@@ -6,40 +7,17 @@ import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import patches
 import numpy as np
-import logging
-import colorlog
+from loguru import logger
 from FbsEnv.envs.FBSModel import FBSModel
 import FbsEnv.utils.FBSUtil as FBSUtil
 
-# 设置中文
-plt.rcParams["font.sans-serif"] = ["SimHei"]  # 设置字体
-plt.rcParams["axes.unicode_minus"] = False  # 正常显示负号
-# 设置日志
-# Create a color formatter
-formatter = colorlog.ColoredFormatter(
-    "%(log_color)s%(asctime)s - %(levelname)s - %(message)s",
-    datefmt=None,
-    reset=True,
-    log_colors={
-        "DEBUG": "cyan",
-        "INFO": "green",
-        "WARNING": "yellow",
-        "ERROR": "red",
-        "CRITICAL": "bold_red",
-    },
+# 设置日志处理级别
+logger.remove()
+logger.add(
+    sys.stderr,
+    level="INFO"
 )
-
-# Set up the handler
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-
-# Configure the root logger
-# 将 matplotlib 的日志级别单独设置为 WARNING
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-# logger.setLevel(logging.DEBUG)
-logger.addHandler(handler)
+plt.rcParams["axes.unicode_minus"] = False  # 正常显示负号
 
 
 class FBSEnv(gym.Env):
@@ -47,7 +25,7 @@ class FBSEnv(gym.Env):
     def __init__(self, instance=None, seed=None, options=None):
         super(FBSEnv, self).__init__()
         with open(
-                r"E:\Codes\pythons\gym-flp-fbs\FbsEnv\files\maoyan_cont_instances.pkl",
+                r"/Users/maoyan/Codes/Python/gym-flp-fbs/FbsEnv/files/maoyan_cont_instances.pkl",
                 "rb",
         ) as file:
             (
@@ -61,17 +39,15 @@ class FBSEnv(gym.Env):
         self.uuid = uuid.uuid4()
         self.F = self.FlowMatrices[self.instance]  # 物流强度矩阵
         self.n = self.problems[self.instance]  # 问题模型的设施数量
-        self.fac_limit_aspect, self.l, self.w, self.area, self.min_side_length = (
+        self.areas,self.fac_limit_aspect = (
             FBSUtil.getAreaData(self.sizes[self.instance])
-        )  # （横纵比，长度，宽度，面积，最小边长）
+        )  # 面积，横纵比
         logger.debug(f"横纵比: {self.fac_limit_aspect}")
-        logger.debug(f"长度: {self.l}")
-        logger.debug(f"宽度: {self.w}")
-        logger.debug(f"面积: {self.area}")
-        logger.debug(f"最小边长: {self.min_side_length}")
-        self.L = self.LayoutLengths[self.instance]  # 厂房的长度
-        self.W = self.LayoutWidths[self.instance]  # 厂房的宽度
-        total_area = np.sum(self.area)  # 设施的总面积
+        logger.debug(f"面积: {self.areas}")
+        self.H = self.LayoutWidths[self.instance]  # 厂房的长度
+        self.W = self.LayoutLengths[self.instance]  # 厂房的宽度
+        
+        total_area = np.sum(self.areas)  # 设施的总面积
         self.actions = {
             # 0: "facility_swap_single",
             # 1: "shuffle_single",
@@ -97,18 +73,17 @@ class FBSEnv(gym.Env):
         logger.debug("-------------------init初始化信息------------------")
         logger.debug(f"实例: {self.instance}")
         logger.debug(f"设施数量: {self.n}")
-        logger.debug(f"设施面积: {self.area}")
-        logger.debug(f"设施长度: {self.l}")
-        logger.debug(f"设施宽度: {self.w}")
+        logger.debug(f"设施信息: {self.sizes[self.instance]}")
+        logger.debug(f"设施面积: {self.areas}")
         logger.debug(f"设施横纵比: {self.fac_limit_aspect}")
-        logger.debug(f"设施总长度L: {self.L}")
+        logger.debug(f"设施总长度H: {self.H}")
         logger.debug(f"设施总宽度W: {self.W}")
         logger.debug("--------------------------------------------------")
 
     def reset(self, fbs_model: FBSModel = None):
         if fbs_model is None:
             permutation, bay = FBSUtil.binary_solution_generator(
-                self.area, self.n, self.fac_limit_aspect, self.L)  # 采用k分初始解生成器
+                self.areas, self.n, self.fac_limit_aspect, self.W)  # 采用k分初始解生成器
             bay[-1] = 1  # bay的最后一个位置必须是1，表示最后一个设施是bay的结束
             self.fbs_model = FBSModel(
                 permutation.astype(int).tolist(),
@@ -118,24 +93,24 @@ class FBSEnv(gym.Env):
         (
             self.fac_x,
             self.fac_y,
-            self.fac_b,
             self.fac_h,
+            self.fac_b,
             self.fac_aspect_ratio,
             self.D,
             self.TM,
             self.MHC,
             self.fitness,
-        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.area, self.W,
+        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.areas, self.H,
                                          self.F, self.fac_limit_aspect)
         self.previous_fitness = self.fitness  # 初始化上一次的适应度值
         # 更新状态字典
         self.state = {
             "facility_information":
             np.array([
-                self.fac_h / self.W,
-                self.fac_b / self.L,
-                self.fac_x / self.L,
-                self.fac_y / self.W,
+                self.fac_h / self.H,
+                self.fac_b / self.W,
+                self.fac_x / self.W,
+                self.fac_y / self.H,
             ])
         }
         logger.debug("-------------------reset调试信息------------------")
@@ -222,23 +197,23 @@ class FBSEnv(gym.Env):
         (
             self.fac_x,
             self.fac_y,
-            self.fac_b,
             self.fac_h,
+            self.fac_b,
             self.fac_aspect_ratio,
             self.D,
             self.TM,
             self.MHC,
             self.fitness,
-        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.area, self.W,
+        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.area, self.H,
                                          self.F, self.fac_limit_aspect)
         # 更新状态字典
         self.state = {
             "facility_information":
             np.array([
-                self.fac_h / self.W,
-                self.fac_b / self.L,
-                self.fac_x / self.L,
-                self.fac_y / self.W,
+                self.fac_h / self.H,
+                self.fac_b / self.W,
+                self.fac_x / self.W,
+                self.fac_y / self.H,
             ])
         }
         # 计算奖励函数
@@ -264,12 +239,12 @@ class FBSEnv(gym.Env):
     def render(self):
         # 创建图形和坐标轴
         fig, ax = plt.subplots()
-        ax.set_title("设施布局图")
-        ax.set_xlabel("X轴")
-        ax.set_ylabel("Y轴")
+        ax.set_title("Facility layout")
+        ax.set_xlabel("X-Axis")
+        ax.set_ylabel("Y-Axis")
         # 设置坐标范围
-        ax.set_xlim(0, self.L)
-        ax.set_ylim(0, self.W)
+        ax.set_xlim(0, self.W)
+        ax.set_ylim(0, self.H)
         # 添加网格
         plt.grid(False)
         plt.gca().set_aspect("equal", adjustable="box")
@@ -282,12 +257,7 @@ class FBSEnv(gym.Env):
                                 1] - self.fac_h[facility_label - 1] / 2
             y_to = self.fac_y[facility_label -
                               1] + self.fac_h[facility_label - 1] / 2
-            line_color = "black"
-            if (self.fac_aspect_ratio[facility_label - 1]
-                    > self.fac_limit_aspect):
-                line_color = "red"
-            else:
-                line_color = "green"
+            line_color = "red" if self.fac_aspect_ratio[facility_label - 1] > self.fac_limit_aspect else "green"
             rect = patches.Rectangle(
                 (x_from, y_from),
                 width=x_to - x_from,

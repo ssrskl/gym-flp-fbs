@@ -1,6 +1,9 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: FbsEnv
 Version: 0.0.1
 Summary: Gym+启发式算法解决FBS布局的UAFLP问题
 Author: 猫颜
 Author-email: 1071352028@qq.com
+Dynamic: author
+Dynamic: author-email
+Dynamic: summary

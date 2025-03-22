@@ -5,7 +5,8 @@ from FbsEnv.envs.FBSModel import FBSModel
 import matplotlib.pyplot as plt
 import numpy as np
 
-env = gym.make("FbsEnv-v0", instance="AB20-ar3")
+# env = gym.make("FbsEnv-v0", instance="AB20-ar3")
+env = gym.make("FbsEnv-v0", instance="Du62")
 matrix = env.F
 
 # 绘制矩阵图

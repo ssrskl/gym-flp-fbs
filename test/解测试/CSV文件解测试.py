@@ -8,8 +8,8 @@ import gym
 from FbsEnv.envs.FBSModel import FBSModel
 
 instance_name = "AB20-ar3"
-fitness = "unknown"
-path = rf"E:\Codes\pythons\gym-flp-fbs\Files\SolutionSet\{instance_name}-{fitness}.csv"
+fitness = "3226.22"
+path = rf"/Users/maoyan/Codes/Python/gym-flp-fbs/Files/SolutionSet/{instance_name}-{fitness}.csv"
 
 
 # 读取数据
