@@ -142,11 +142,11 @@ from FbsEnv.utils import FBSUtil
 #     new_array.append(i.tolist())
 # print(new_array)
 array = [
-[4, 10],
-[9, 5, 7],
-[3],
-[2, 12],
-[1],
-[11, 8, 6]
+[20,18],
+[6,8,7,4,2,1],
+[5,19,3],
+[12,9,10,14],
+[17,13,15],
+[16,11]
 ]
 print(FBSUtil.arrayToPermutation(array))

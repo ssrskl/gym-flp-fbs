@@ -30,8 +30,9 @@ class FBSUtils:
     class CrossoverActions:
 
         @staticmethod
-        def order_crossover(parent1: FBSModel,
-                            parent2: FBSModel) -> tuple[FBSModel, FBSModel]:
+        def order_crossover(
+            parent1: FBSModel, parent2: FBSModel
+        ) -> tuple[FBSModel, FBSModel]:
             parent1_perm = parent1.permutation
             parent2_perm = parent2.permutation
             parent1_bay = parent1.bay
@@ -46,13 +47,12 @@ class FBSUtils:
             if isinstance(parent2_bay, np.ndarray):
                 parent2_bay = parent2_bay.tolist()
             size = len(parent1_perm)
-            startPoint, endPoint = sorted(
-                np.random.choice(size, 2, replace=False))
+            startPoint, endPoint = sorted(np.random.choice(size, 2, replace=False))
             logging.info(
                 f"order_crossover-->startPoint: {startPoint}, endPoint: {endPoint}"
             )
-            crossover_part_1 = parent1_perm[startPoint:endPoint + 1]
-            crossover_part_2 = parent2_perm[startPoint:endPoint + 1]
+            crossover_part_1 = parent1_perm[startPoint : endPoint + 1]
+            crossover_part_2 = parent2_perm[startPoint : endPoint + 1]
             # 获取 parent1 中去除 crossover_part_2 的部分
             parent1_remaining = [
                 elem for elem in parent1_perm if elem not in crossover_part_2
@@ -61,41 +61,51 @@ class FBSUtils:
             parent2_remaining = [
                 elem for elem in parent2_perm if elem not in crossover_part_1
             ]
-            offspring_1_perm = parent1_remaining[:
-                                                 startPoint] + crossover_part_2 + parent1_remaining[
-                                                     startPoint:]
-            offspring_2_perm = parent2_remaining[:
-                                                 startPoint] + crossover_part_1 + parent2_remaining[
-                                                     startPoint:]
-            offspring_1_bay = parent1_bay[:startPoint] + parent2_bay[
-                startPoint:endPoint + 1] + parent1_bay[endPoint + 1:]
-            offspring_2_bay = parent2_bay[:startPoint] + parent1_bay[
-                startPoint:endPoint + 1] + parent2_bay[endPoint + 1:]
+            offspring_1_perm = (
+                parent1_remaining[:startPoint]
+                + crossover_part_2
+                + parent1_remaining[startPoint:]
+            )
+            offspring_2_perm = (
+                parent2_remaining[:startPoint]
+                + crossover_part_1
+                + parent2_remaining[startPoint:]
+            )
+            offspring_1_bay = (
+                parent1_bay[:startPoint]
+                + parent2_bay[startPoint : endPoint + 1]
+                + parent1_bay[endPoint + 1 :]
+            )
+            offspring_2_bay = (
+                parent2_bay[:startPoint]
+                + parent1_bay[startPoint : endPoint + 1]
+                + parent2_bay[endPoint + 1 :]
+            )
             offspring_1 = FBSModel(offspring_1_perm, offspring_1_bay)
             offspring_2 = FBSModel(offspring_2_perm, offspring_2_bay)
             return offspring_1, offspring_2
 
 
-def fill_without_duplicates(parent1: list[int], parent2: list[int],
-                            startPoint: int,
-                            endPoint: int) -> tuple[list[int], list[int]]:
-    crossover_part_1 = parent1[startPoint:endPoint + 1]
-    crossover_part_2 = parent2[startPoint:endPoint + 1]
+def fill_without_duplicates(
+    parent1: list[int], parent2: list[int], startPoint: int, endPoint: int
+) -> tuple[list[int], list[int]]:
+    crossover_part_1 = parent1[startPoint : endPoint + 1]
+    crossover_part_2 = parent2[startPoint : endPoint + 1]
     # 获取 parent1 中去除 crossover_part_2 的部分
-    parent1_remaining = [
-        elem for elem in parent1 if elem not in crossover_part_2
-    ]
+    parent1_remaining = [elem for elem in parent1 if elem not in crossover_part_2]
     # 获取 parent2 中去除 crossover_part_1 的部分
-    parent2_remaining = [
-        elem for elem in parent2 if elem not in crossover_part_1
-    ]
+    parent2_remaining = [elem for elem in parent2 if elem not in crossover_part_1]
 
-    offspring_1 = parent1_remaining[:
-                                    startPoint] + crossover_part_2 + parent1_remaining[
-                                        startPoint:]
-    offspring_2 = parent2_remaining[:
-                                    startPoint] + crossover_part_1 + parent2_remaining[
-                                        startPoint:]
+    offspring_1 = (
+        parent1_remaining[:startPoint]
+        + crossover_part_2
+        + parent1_remaining[startPoint:]
+    )
+    offspring_2 = (
+        parent2_remaining[:startPoint]
+        + crossover_part_1
+        + parent2_remaining[startPoint:]
+    )
 
     return offspring_1, offspring_2
 
@@ -126,12 +136,14 @@ def getAreaData(
     返回:
         tuple: 面积areas和横纵比aspects
     """
-     # 获取包含特定关键词的列并转换为一维数组
+
+    # 获取包含特定关键词的列并转换为一维数组
     def get_column_data(df, pattern):
         cols = df.filter(regex=re.compile(pattern, re.IGNORECASE)).columns
         return df[cols].to_numpy().flatten() if not cols.empty else None
-    areas = get_column_data(df, 'Area')
-    aspects = get_column_data(df, 'Aspect')
+
+    areas = get_column_data(df, "Area")
+    aspects = get_column_data(df, "Aspect")
     aspects = aspects[0] if aspects is not None else 99
     return areas, aspects
 
@@ -179,8 +191,7 @@ def binary_solution_generator(area, n, beta, L):
         # print("a/l", a / l)
         # 合格个数
         if beta is not None:
-            qualified_number = np.sum((aspect_ratio >= 1)
-                                      & (aspect_ratio <= beta))
+            qualified_number = np.sum((aspect_ratio >= 1) & (aspect_ratio <= beta))
         else:
             qualified_number = np.sum((w > 1) & (l > 1))
         # 如果合格个数大于等于3/4*n，即此k值可行
@@ -241,34 +252,42 @@ def _find_best_partition(arr, k):
     return best_partition, np.split(arr, best_partition)
 
 
-
 # 计算设施坐标和尺寸
 def getCoordinates_mao(fbs_model: FBSModel, area, H):
     permutation = fbs_model.permutation
     bay = fbs_model.bay
-    bays = permutationToArray(permutation, bay) # 将排列按照划分点分割成多个子数组，每个子数组代表一个区段的排列
+    bays = permutationToArray(
+        permutation, bay
+    )  # 将排列按照划分点分割成多个子数组，每个子数组代表一个区段的排列
     # 初始化长度、宽度和坐标数组
-    n  = len(permutation)
-    lengths = np.zeros(n) # 每个设施的长度
-    widths = np.zeros(n) # 每个设施的宽度
-    fac_x = np.zeros(n) # 每个设施的x坐标
-    fac_y = np.zeros(n) # 每个设施的y坐标
+    n = len(permutation)
+    lengths = np.zeros(n)  # 每个设施的长度
+    widths = np.zeros(n)  # 每个设施的宽度
+    fac_x = np.zeros(n)  # 每个设施的x坐标
+    fac_y = np.zeros(n)  # 每个设施的y坐标
     # 计算每个区带的坐标和尺寸
     x = 0
-    start = 0 # 记录当前子数组的起始索引
+    start = 0  # 记录当前子数组的起始索引
     # 从上向下排列
     for b in bays:
         indices = np.array(b) - 1
         bay_areas = area[indices]
         # 计算每个设施的长度和宽度
-        widths[start:start + len(bay_areas)] = np.sum(bay_areas) / H
-        lengths[start:start + len(bay_areas)] = bay_areas / widths[start:start + len(bay_areas)]
+        widths[start : start + len(bay_areas)] = np.sum(bay_areas) / H
+        lengths[start : start + len(bay_areas)] = (
+            bay_areas / widths[start : start + len(bay_areas)]
+        )
         # 计算设施的x坐标
-        fac_x[start:start + len(bay_areas)] = widths[start:start + len(bay_areas)] * 0.5 + x
+        fac_x[start : start + len(bay_areas)] = (
+            widths[start : start + len(bay_areas)] * 0.5 + x
+        )
         x += np.sum(bay_areas) / H
         # 计算设施的y坐标
-        y = np.cumsum(lengths[start:start + len(bay_areas)]) - lengths[start:start + len(bay_areas)] * 0.5
-        fac_y[start:start + len(bay_areas)] = y
+        y = (
+            np.cumsum(lengths[start : start + len(bay_areas)])
+            - lengths[start : start + len(bay_areas)] * 0.5
+        )
+        fac_y[start : start + len(bay_areas)] = y
         start += len(bay_areas)
     # 顺序恢复
     order = np.argsort(permutation)
@@ -289,22 +308,41 @@ def getEuclideanDistances(x, y):
         np.ndarray: 距离矩阵
     """
     return np.sqrt(
-        np.array([[(x[i] - x[j])**2 + (y[i] - y[j])**2 for j in range(len(x))]
-                  for i in range(len(x))]))
+        np.array(
+            [
+                [(x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2 for j in range(len(x))]
+                for i in range(len(x))
+            ]
+        )
+    )
 
 
-# 计算曼哈顿距离矩阵
 def getManhattanDistances(x, y):
     """计算曼哈顿距离矩阵
     Args:
         x (np.ndarray): 设施x坐标
         y (np.ndarray): 设施y坐标
+    Returns:
+        np.ndarray: 曼哈顿距离矩阵
+    Raises:
+        ValueError: 如果输入不是数组或长度不匹配
     """
-    return np.array(
-        [[abs(x[i] - x[j]) + abs(y[i] - y[j]) for j in range(len(x))]
-         for i in range(len(x))],
-        dtype=float,
-    )
+    # 输入验证
+    if not isinstance(x, np.ndarray) or not isinstance(y, np.ndarray):
+        raise ValueError("x 和 y 必须是 NumPy 数组")
+    if len(x) != len(y):
+        raise ValueError("x 和 y 的长度必须相同")
+    if len(x) == 0:
+        return np.array([], dtype=float)
+
+    # 转换为 NumPy 数组（如果尚未是）
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    # 使用向量化操作计算曼哈顿距离
+    x_diff = np.abs(x[:, np.newaxis] - x[np.newaxis, :])
+    y_diff = np.abs(y[:, np.newaxis] - y[np.newaxis, :])
+    return x_diff + y_diff
 
 
 def permutationMatrix(a):
@@ -315,20 +353,18 @@ def permutationMatrix(a):
     return P
 
 
-def getTransportIntensity(D, F, fbs_model: FBSModel):
-    logger.info("计算物流强度矩阵")
-    logger.info(f"D: \n{D}")
-    logger.info(f"F: \n{F}")
-    permutation = fbs_model.permutation
-    P = permutationMatrix(permutation)
-    return np.dot(np.dot(D, P), np.dot(F, P.T))
+def getTransportIntensity(D, F):
+    # logger.info("计算物流强度矩阵")
+    # logger.info(f"D: \n{D}")
+    # logger.info(f"F: \n{F}")
+    return D * F
 
 
 # 计算MHC
 def getMHC(D, F, fbs_model: FBSModel):
-    permutation = fbs_model.permutation
-    P = permutationMatrix(permutation)
-    logger.info(f"P: \n{P}")
+    # permutation = fbs_model.permutation
+    # P = permutationMatrix(permutation)
+    # logger.info(f"P: \n{P}")
     # MHC = np.sum(np.tril(np.dot(P.T, np.dot(D, P))) * (F.T))
     # MHC = np.sum(np.triu(D) * (F))
     MHC = np.sum(D * F)
@@ -339,6 +375,7 @@ def getMHC(D, F, fbs_model: FBSModel):
 
 # 计算适应度
 import numpy as np
+
 
 def getFitness(mhc, fac_b, fac_h, fac_limit_aspect=None, k=3):
     """
@@ -371,16 +408,16 @@ def getFitness(mhc, fac_b, fac_h, fac_limit_aspect=None, k=3):
     # 计算不可行设施的数量
     non_feasible_counter = np.sum(non_feasible)
     # 计算适应度
-    fitness = MHC + MHC * (non_feasible_counter ** k)
+    fitness = MHC + MHC * (non_feasible_counter**k)
     return fitness
 
 
 def StatusUpdatingDevice(fbs_model: FBSModel, a, H, F, fac_limit_aspect_ratio):
     fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(fbs_model, a, H)
     fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
-    D = getManhattanDistances(fac_x, fac_y) # 曼哈顿距离
+    D = getManhattanDistances(fac_x, fac_y)  # 曼哈顿距离
     # D = getEuclideanDistances(fac_x, fac_y) # 欧几里得距离
-    TM = getTransportIntensity(D, F, fbs_model)
+    TM = getTransportIntensity(D, F)
     mhc = getMHC(D, F, fbs_model)
     fitness = getFitness(mhc, fac_b, fac_h, fac_limit_aspect_ratio)
     return (fac_x, fac_y, fac_b, fac_h, fac_aspect_ratio, D, TM, mhc, fitness)
@@ -390,8 +427,7 @@ def StatusUpdatingDevice(fbs_model: FBSModel, a, H, F, fac_limit_aspect_ratio):
 # Shuffle单区带优化
 def shuffleOptimization(env, bay_index):
     tmp_env = copy.deepcopy(env)
-    fac_list = permutationToArray(tmp_env.fbs_model.permutation,
-                                  tmp_env.fbs_model.bay)
+    fac_list = permutationToArray(tmp_env.fbs_model.permutation, tmp_env.fbs_model.bay)
     child_permutation = fac_list[bay_index]
     # 对child_permutation进行shuffle n*n 次
     n = env.n
@@ -416,8 +452,7 @@ def shuffleOptimization(env, bay_index):
 
 
 # 全排列局部优化
-def fullPermutationOptimization(permutation, bay, a, W, D, F,
-                                fac_limit_aspect):
+def fullPermutationOptimization(permutation, bay, a, W, D, F, fac_limit_aspect):
     # 对当前的状态进行局部搜索，返回新的状态和适应度函数值
     # print("开始局部搜索优化")
     # 局部搜索优化，全排列每一个bay中的设施，并计算适应度函数值，选择最优的排列
@@ -452,8 +487,7 @@ def fullPermutationOptimization(permutation, bay, a, W, D, F,
 # 单区带全排列优化
 def SingleBayGradualArrangementOptimization(env, bay_index):
     tmp_env = copy.deepcopy(env)
-    fac_list = permutationToArray(tmp_env.fbs_model.permutation,
-                                  tmp_env.fbs_model.bay)
+    fac_list = permutationToArray(tmp_env.fbs_model.permutation, tmp_env.fbs_model.bay)
     best_fitness = tmp_env.fitness.copy()
     best_permutation = tmp_env.fbs_model.permutation.copy()
     best_bay = tmp_env.fbs_model.bay.copy()
@@ -490,8 +524,7 @@ def exchangeOptimization(
             new_perm[i], new_perm[i + 1] = new_perm[i + 1], new_perm[i]
             # 计算当下排列的适应度函数值
             mhc = getMHC(D, F, new_perm)
-            fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(
-                new_perm, bay, a, H)
+            fac_x, fac_y, fac_b, fac_h = getCoordinates_mao(new_perm, bay, a, H)
             fitness = getFitness(mhc, fac_b, fac_h, fac_limit_aspect)
             if fitness < best_fitness:
                 best_fitness = fitness
@@ -502,8 +535,9 @@ def exchangeOptimization(
 
 
 # 排列优化算法
-def arrangementOptimization(permutation: np.ndarray, bay: np.ndarray,
-                            instance: str):  # -> tuple[ndarray, ndarray]:
+def arrangementOptimization(
+    permutation: np.ndarray, bay: np.ndarray, instance: str
+):  # -> tuple[ndarray, ndarray]:
     # 创建env对象
     env = gym.make("fbs-v0", instance=instance)
     env.reset(layout=(permutation, bay))
@@ -590,8 +624,7 @@ def shuffle_single(permutation: np.ndarray, bay: np.ndarray):
     sub_permutation = fac_list[bay_index]  # 得到bay_index对应的子排列
     np.random.shuffle(sub_permutation)  # 将sub_permutation进行shuffle
     fac_list[bay_index] = sub_permutation  # 将sub_permutation放回fac_list
-    permutation, bay = arrayToPermutation(
-        fac_list)  # 将fac_list转换为permutation和bay
+    permutation, bay = arrayToPermutation(fac_list)  # 将fac_list转换为permutation和bay
     return permutation, bay
 
 
@@ -679,13 +712,13 @@ def repair(
         tmp_array = array[:]
         # 计算所有的设施的横纵比
         fac_aspect_ratio = np.maximum(fac_b, fac_h) / np.minimum(fac_b, fac_h)
-        current_bay_fac_aspect_ratio = np.array(
-            [fac_aspect_ratio[b - 1] for b in bay])
-        current_bay_fac_hv_ratio = np.array(
-            [fac_b[b - 1] / fac_h[b - 1] for b in bay])
+        current_bay_fac_aspect_ratio = np.array([fac_aspect_ratio[b - 1] for b in bay])
+        current_bay_fac_hv_ratio = np.array([fac_b[b - 1] / fac_h[b - 1] for b in bay])
         # 如果当前bay的设施的横纵比不满足条件，则进行修复
-        if np.any((current_bay_fac_aspect_ratio < 1)
-                  | (current_bay_fac_aspect_ratio > fac_limit_aspect)):
+        if np.any(
+            (current_bay_fac_aspect_ratio < 1)
+            | (current_bay_fac_aspect_ratio > fac_limit_aspect)
+        ):
             # logger.info(f"区带{i}不满足条件")
             # 如果太宽了，说明这个bay中的设施过多，则将其对半分（太宽：横坐标长度/纵坐标长度 > 横纵比）这里使用bay的平均值
             if np.any(current_bay_fac_hv_ratio > fac_limit_aspect):
@@ -700,12 +733,10 @@ def repair(
                 # print(f"区带{i}有设施太窄了")
                 # 将当前bay的设施与相邻的bay进行合并
                 if i + 1 < len(tmp_array):
-                    tmp_array[i] = np.concatenate(
-                        (tmp_array[i], tmp_array[i + 1]))
+                    tmp_array[i] = np.concatenate((tmp_array[i], tmp_array[i + 1]))
                     tmp_array.pop(i + 1)
                 else:
-                    tmp_array[i] = np.concatenate(
-                        (tmp_array[i], tmp_array[i - 1]))
+                    tmp_array[i] = np.concatenate((tmp_array[i], tmp_array[i - 1]))
                     tmp_array.pop(i - 1)
             array = tmp_array
             break
@@ -724,8 +755,8 @@ def orderCrossover(parent1: FBSModel, parent2: FBSModel):
     offspring1_permutation = [-1] * size  # 初始化第一个子代的设施序列
     offspring2_permutation = [-1] * size  # 初始化第二个子代的设施序列
     start, end = sorted(random.sample(range(size), 2))  # 随机选择交叉点范围
-    offspring1_permutation[start:end + 1] = parent1.permutation[start:end + 1]
-    offspring2_permutation[start:end + 1] = parent2.permutation[start:end + 1]
+    offspring1_permutation[start : end + 1] = parent1.permutation[start : end + 1]
+    offspring2_permutation[start : end + 1] = parent2.permutation[start : end + 1]
     pos1 = (end + 1) % size  # 填充第一个子代的起始位置
     pos2 = (end + 1) % size  # 填充第二个子代的起始位置
     for i in range(size):
@@ -743,10 +774,12 @@ def orderCrossover(parent1: FBSModel, parent2: FBSModel):
         facility1 = offspring1_permutation[i]
         facility2 = offspring2_permutation[i]
         # 在第一个亲本中找出该设施的位置，并继承对应的区带信息
-        index_in_parent1_for_offspring1 = np.where(
-            parent1.permutation == facility1)[0][0]
-        index_in_parent2_for_offspring2 = np.where(
-            parent2.permutation == facility2)[0][0]
+        index_in_parent1_for_offspring1 = np.where(parent1.permutation == facility1)[0][
+            0
+        ]
+        index_in_parent2_for_offspring2 = np.where(parent2.permutation == facility2)[0][
+            0
+        ]
         offspring1_bay[i] = parent1.bay[index_in_parent1_for_offspring1]
         offspring2_bay[i] = parent2.bay[index_in_parent2_for_offspring2]
     offspring1_bay[-1] = 1
@@ -776,7 +809,7 @@ def permutationToArray(permutation, bay):
     start = 0
     for i, val in enumerate(bay):
         if val == 1:
-            array.append(permutation[start:i + 1])
+            array.append(permutation[start : i + 1])
             start = i + 1
     return array
 
@@ -796,3 +829,36 @@ def arrayToPermutation(array):
 def sayHello():
     logging.info("Hello World")
 
+
+def constructState(fac_x, fac_y, fac_b, fac_h, W, L, fbsModel, TM):
+    n = len(fbsModel.permutation)
+    permutation = fbsModel.permutation
+    bay = fbsModel.bay
+    state_prelim = np.zeros((4 * n,), dtype=float)
+    state_prelim[0::4] = fac_x  # 0，4，8
+    state_prelim[1::4] = fac_y  # 1，5，9
+    state_prelim[2::4] = fac_b  # 2，6，10
+    state_prelim[3::4] = fac_h  # 3，7，11
+    data = np.zeros((int(W), int(L), 3), dtype=np.uint8)
+    sources = np.sum(TM, axis=1)
+    sinks = np.sum(TM, axis=0)
+    R = np.array(
+        ((permutation - np.min(permutation))/ (np.max(permutation) - np.min(permutation)))* 255
+    ).astype(np.uint8)
+    G = np.array(
+        ((sources - np.min(sources)) / (np.max(sources) - np.min(sources))) * 255
+    ).astype(np.uint8)
+    B = np.array(
+        ((sinks - np.min(sinks)) / (np.max(sinks) - np.min(sinks))) * 255
+    ).astype(np.uint8)
+        # 将坐标和颜色结合到图像中
+    for i in range(n):
+        # 计算设施的像素范围
+        x_start = max(0, int(np.floor(fac_x[i])))              # 左边界
+        x_end = min(L, int(np.ceil(fac_x[i] + fac_b[i])))      # 右边界
+        y_start = max(0, int(np.floor(fac_y[i])))              # 上边界
+        y_end = min(W, int(np.ceil(fac_y[i] + fac_h[i])))      # 下边界
+
+        # 填充颜色到对应区域
+        data[y_start:y_end, x_start:x_end, :] = [R[i], G[i], B[i]]
+    return data

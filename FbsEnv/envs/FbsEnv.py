@@ -63,10 +63,15 @@ class FBSEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
 
         # 保持观察空间为字典形式
-        self.observation_space = spaces.Dict({
-            "facility_information":
-            spaces.Box(low=0, high=1, shape=(4, self.n), dtype=np.float64)
-        })
+        observation_low = np.tile(
+            np.array([0, 0, 0, 0], dtype=int), self.n
+        )
+        observation_high = np.tile(
+            np.array([self.W, self.H, self.W, self.H], dtype=int), self.n
+        )
+        self.observation_space = spaces.Box(
+            low=observation_low, high=observation_high, dtype=int
+        )
         self.fitness = np.inf
 
         # ------------------调试信息------------------
@@ -104,15 +109,7 @@ class FBSEnv(gym.Env):
                                          self.F, self.fac_limit_aspect)
         self.previous_fitness = self.fitness  # 初始化上一次的适应度值
         # 更新状态字典
-        self.state = {
-            "facility_information":
-            np.array([
-                self.fac_h / self.H,
-                self.fac_b / self.W,
-                self.fac_x / self.W,
-                self.fac_y / self.H,
-            ])
-        }
+        self.state = self.constructState()
         logger.debug("-------------------reset调试信息------------------")
         logger.debug(f"设施x坐标: {self.fac_x}")
         logger.debug(f"设施y坐标: {self.fac_y}")
@@ -242,60 +239,72 @@ class FBSEnv(gym.Env):
         ax.set_title("Facility layout")
         ax.set_xlabel("X-Axis")
         ax.set_ylabel("Y-Axis")
-        # 设置坐标范围
         ax.set_xlim(0, self.W)
         ax.set_ylim(0, self.H)
-        # 添加网格
         plt.grid(False)
         plt.gca().set_aspect("equal", adjustable="box")
+
+        # 绘制设施矩形
         for i, facility_label in enumerate(self.fbs_model.permutation):
-            x_from = self.fac_x[facility_label -
-                                1] - self.fac_b[facility_label - 1] / 2
-            x_to = self.fac_x[facility_label -
-                              1] + self.fac_b[facility_label - 1] / 2
-            y_from = self.fac_y[facility_label -
-                                1] - self.fac_h[facility_label - 1] / 2
-            y_to = self.fac_y[facility_label -
-                              1] + self.fac_h[facility_label - 1] / 2
-            line_color = "red" if self.fac_aspect_ratio[facility_label - 1] > self.fac_limit_aspect else "green"
+            facility_idx = facility_label - 1  # 设施索引从0开始
+            x_from = self.fac_x[facility_idx] - self.fac_b[facility_idx] / 2
+            x_to = self.fac_x[facility_idx] + self.fac_b[facility_idx] / 2
+            y_from = self.fac_y[facility_idx] - self.fac_h[facility_idx] / 2
+            y_to = self.fac_y[facility_idx] + self.fac_h[facility_idx] / 2
+
+            # 边框颜色表示长宽比状态
+            line_color = "red" if self.fac_aspect_ratio[facility_idx] > self.fac_limit_aspect else "green"
+            
+            # 填充颜色表示成本（RGB）
+            R = self.state[facility_idx, 0] / 255
+            G = self.state[facility_idx, 1] / 255
+            B = self.state[facility_idx, 2] / 255
+            face_color = (R, G, B, 0.7)
+
             rect = patches.Rectangle(
                 (x_from, y_from),
                 width=x_to - x_from,
                 height=y_to - y_from,
                 edgecolor=line_color,
-                facecolor="none",
-                linewidth=0.5,
-                angle=0.5,
+                facecolor=face_color,  # 填充颜色
+                linewidth=1
             )
             ax.add_patch(rect)
+
             # 显示设施ID
             ax.text(
                 x_from + (x_to - x_from) / 2,
                 y_from + (y_to - y_from) / 2,
-                # f"{int(label)}, AR={aspect_ratio[i]:.2f}",
                 f"{int(facility_label)}",
                 ha="center",
                 va="center",
+                color="white" if np.mean(face_color[:3]) < 0.5 else "black"  # 自适应文字颜色
             )
 
-        # 显示MHC
-        plt.figtext(
-            0.5,
-            0.93,
-            "MHC: {:.2f}".format(FBSUtil.getMHC(self.D, self.F,
-                                                self.fbs_model)),
-            ha="center",
-            fontsize=12,
-        )
-        # 显示Fitness
-        plt.figtext(
-            0.5,
-            0.96,
-            "fitness: {:.2f}".format(
-                FBSUtil.getFitness(self.MHC, self.fac_b, self.fac_h,
-                                   self.fac_limit_aspect)),
-            ha="center",
-            fontsize=12,
-        )
-        # 显示图形
+        # 显示MHC和Fitness
+        plt.figtext(0.5, 0.93, f"MHC: {self.MHC:.2f}", ha="center", fontsize=12)
+        plt.figtext(0.5, 0.96, f"Fitness: {FBSUtil.getFitness(self.MHC, self.fac_b, self.fac_h, self.fac_limit_aspect):.2f}", ha="center", fontsize=12)
+
         plt.show()
+    def constructState(self):
+        state = np.zeros((self.n, 3))
+        permutation = self.fbs_model.permutation
+        TM = self.TM
+        sources = np.sum(TM, axis=1)
+        sinks = np.sum(TM, axis=0) 
+        R = np.array(
+            ((permutation - np.min(permutation)) / (np.max(permutation) - np.min(permutation)))
+            * 255
+        ).astype(np.uint8)
+        G = np.array(
+            ((sources - np.min(sources)) / (np.max(sources) - np.min(sources)))
+            * 255
+        ).astype(np.uint8)
+        B = np.array(
+            ((sinks - np.min(sinks)) / (np.max(sinks) - np.min(sinks)))
+            * 255
+        ).astype(np.uint8)
+        state[:, 0] = R
+        state[:, 1] = G
+        state[:, 2] = B
+        return state
