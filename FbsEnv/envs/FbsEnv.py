@@ -61,8 +61,7 @@ class FBSEnv(gym.Env):
             4: "idle",
         }  # 动作空间
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
-        self.observation_space = spaces.Box(
-            low=0, high=255, shape=(self.n,3),dtype=np.uint8)  # 状态空间
+        self.observation_space = spaces.Box(low=0, high=255, shape=(self.n * 3,), dtype=np.uint8)  # 状态空间
         self.fitness = np.inf
 
         # ------------------调试信息------------------
@@ -239,9 +238,10 @@ class FBSEnv(gym.Env):
             line_color = "red" if self.fac_aspect_ratio[facility_idx] > self.fac_limit_aspect else "green"
             
             # 填充颜色表示成本（RGB）
-            R = self.state[facility_idx, 0] / 255
-            G = self.state[facility_idx, 1] / 255
-            B = self.state[facility_idx, 2] / 255
+            state_reshaped = self.state.reshape(self.n, 3)
+            R = state_reshaped[facility_idx, 0] / 255
+            G = state_reshaped[facility_idx, 1] / 255
+            B = state_reshaped[facility_idx, 2] / 255
             face_color = (R, G, B, 0.7)
 
             rect = patches.Rectangle(
@@ -290,4 +290,4 @@ class FBSEnv(gym.Env):
         state[:, 0] = R
         state[:, 1] = G
         state[:, 2] = B
-        return state
+        return state.flatten()

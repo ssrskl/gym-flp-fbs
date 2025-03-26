@@ -10,17 +10,21 @@ from FbsEnv.envs.FBSModel import FBSModel
 import FbsEnv.utils.FBSUtil as FBSUtil
 import logging
 from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from loguru import logger
 
 themeName = "基础模型训练"
-instance = "O7-maoyan"
-total_timesteps = 100_000
+instance = "Du62"
+total_timesteps = 10_000
 env = gym.make("FbsEnv-v0", instance=instance)
 obs = env.reset()
 current_path = os.path.dirname(os.path.abspath(__file__))
 # 将当前路径的上一级路径作为保存路径
-model = DQN.load(
-    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-DQN-{instance}-{total_timesteps}"
+# model = DQN.load(
+#     f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-DQN-{instance}-{total_timesteps}"
+# )
+model = PPO.load(
+    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-PPO-{instance}-{total_timesteps}"
 )
 
 max_steps = 10000
