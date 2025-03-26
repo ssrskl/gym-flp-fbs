@@ -14,7 +14,7 @@ from stable_baselines3 import PPO
 from loguru import logger
 
 themeName = "基础模型训练"
-instance = "Du62"
+instance = "O9-maoyan"
 total_timesteps = 10_000
 env = gym.make("FbsEnv-v0", instance=instance)
 obs = env.reset()

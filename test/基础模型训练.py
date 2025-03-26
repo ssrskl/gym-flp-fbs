@@ -15,7 +15,7 @@ import torch
 device = "mps" if torch.backends.mps.is_available() else "cpu" # 检查是否有可用的MPS设备
 logger.info(f"使用设备: {device}")
 themeName = "基础模型训练"
-instance = "Du62"
+instance = "O9-maoyan"
 total_timesteps = 10_000
 env = gym.make("FbsEnv-v0", instance=instance)
 env.reset()
