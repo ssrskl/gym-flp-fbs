@@ -13,14 +13,14 @@ from stable_baselines3 import DQN
 from loguru import logger
 
 themeName = "基础模型训练"
-instance = "O9-maoyan"
+instance = "O7-maoyan"
 total_timesteps = 100_000
 env = gym.make("FbsEnv-v0", instance=instance)
 obs = env.reset()
 current_path = os.path.dirname(os.path.abspath(__file__))
 # 将当前路径的上一级路径作为保存路径
 model = DQN.load(
-    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-DQN-O9-maoyan-40000"
+    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-DQN-{instance}-{total_timesteps}"
 )
 
 max_steps = 10000
@@ -36,8 +36,7 @@ while current_step < max_steps:
         best_fitness = env.fitness
         logging.info(f"当前适应度: {env.fitness}")
         logging.info(f"当前解: {env.fbs_model.permutation}, {env.fbs_model.bay}")
-        best_solution.permutation = env.fbs_model.permutation
-        best_solution.bay = env.fbs_model.bay
+        best_solution = FBSModel(env.fbs_model.permutation,env.fbs_model.bay)
         logging.info(
             f"第{current_step}步，当前最佳适应度为{best_fitness}, 当前解为{best_solution.permutation}, {best_solution.bay}"
         )

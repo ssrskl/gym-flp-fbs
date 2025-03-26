@@ -35,7 +35,7 @@ class FBSModel:
         """根据permutation和bay动态计算二维数组"""
         bay_copy = self._bay.copy()
         # 假设最后一个元素必须是1，如果不是则强制设为1
-        if bay_copy and bay_copy[-1] != 1:
+        if bay_copy[-1] != 1:
             bay_copy[-1] = 1
         array = []
         start = 0

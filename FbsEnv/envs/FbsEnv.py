@@ -61,17 +61,8 @@ class FBSEnv(gym.Env):
             4: "idle",
         }  # 动作空间
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
-
-        # 保持观察空间为字典形式
-        observation_low = np.tile(
-            np.array([0, 0, 0, 0], dtype=int), self.n
-        )
-        observation_high = np.tile(
-            np.array([self.W, self.H, self.W, self.H], dtype=int), self.n
-        )
         self.observation_space = spaces.Box(
-            low=observation_low, high=observation_high, dtype=int
-        )
+            low=0, high=255, shape=(self.n,3),dtype=np.uint8)  # 状态空间
         self.fitness = np.inf
 
         # ------------------调试信息------------------
@@ -201,18 +192,10 @@ class FBSEnv(gym.Env):
             self.TM,
             self.MHC,
             self.fitness,
-        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.area, self.H,
+        ) = FBSUtil.StatusUpdatingDevice(self.fbs_model, self.areas, self.H,
                                          self.F, self.fac_limit_aspect)
         # 更新状态字典
-        self.state = {
-            "facility_information":
-            np.array([
-                self.fac_h / self.H,
-                self.fac_b / self.W,
-                self.fac_x / self.W,
-                self.fac_y / self.H,
-            ])
-        }
+        self.state = self.constructState()
         # 计算奖励函数
         reward = self.calculate_reward()
         self.previous_fitness = self.fitness
@@ -224,7 +207,7 @@ class FBSEnv(gym.Env):
             "reward": reward,  # 当前步骤的奖励
             "facility_count": self.n,  # 设施数量
             "action_taken": action_name,  # 执行的动作名称
-            "layout_dimensions": (self.L, self.W),  # 布局的长和宽
+            "layout_dimensions": (self.H, self.W),  # 布局的长和宽
         }
         return (
             self.state,

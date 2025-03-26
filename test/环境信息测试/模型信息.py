@@ -9,4 +9,5 @@ from FbsEnv.envs.FBSModel import FBSModel
 instance_name = "Du62"
 env = gym.make("FbsEnv-v0", instance=instance_name)
 env.reset()
+print(env.fbs_model.array_2d)
 env.render()
