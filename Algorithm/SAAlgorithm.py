@@ -8,6 +8,8 @@ from loguru import logger
 from stable_baselines3 import PPO
 from stable_baselines3 import DQN
 from FbsEnv.envs.FBSModel import FBSModel
+import FbsEnv.utils.ExperimentsUtil as ExperimentsUtil
+import datetime
 import copy
 
 def simulated_annealing(env, max_iterations=2000, initial_temp=1000.0, alpha=0.99):
@@ -38,11 +40,21 @@ def simulated_annealing(env, max_iterations=2000, initial_temp=1000.0, alpha=0.9
         current_temp *= alpha # 降温
         if iteration % 100 == 0:
             print(f"Iteration {iteration}, Current Fitness: {current_fitness}, Best Fitness: {best_fitness}")
-    return best_solution, best_fitness # 返回最优解和最优适应度
+    return iteration,best_solution, best_fitness # 返回最优解和最优适应度
 
 if __name__ == "__main__":
-    env = gym.make("FbsEnv-v0", instance="AB20-ar3")
-    best_solution, best_fitness = simulated_annealing(env)
-    print(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")
-    env.reset(fbs_model=best_solution)
-    env.render()
+    for i in range(10):
+        exp_start_time = datetime.datetime.now()
+        env = gym.make("FbsEnv-v0", instance="AB20-ar3")
+        iteration,best_solution, best_fitness = simulated_annealing(env)
+        print(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")
+        exp_end_time = datetime.datetime.now()
+        ExperimentsUtil.save_experiment_result(
+            exp_instance="AB20-ar3",
+            exp_algorithm="模拟退火算法",
+            exp_iterations=iteration,
+            exp_solution=best_solution.array_2d,
+            exp_fitness=best_fitness,
+            exp_start_time=exp_start_time,
+            exp_end_time=exp_end_time
+        )
