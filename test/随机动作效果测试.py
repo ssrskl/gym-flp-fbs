@@ -12,12 +12,12 @@ env = gym.make("FbsEnv-v0", instance="Du62")
 env.reset()
 
 for _ in range(max_timesteps):
-    action = np.random.randint(0, 9)
+    action = np.random.randint(0, 4)
     env.step(action)
     if env.fitness < best_fitness:
         best_fitness = env.fitness
         best_solution = FBSModel(env.fbs_model.permutation, env.fbs_model.bay)
 
-print(f"当前最优解：{best_solution.permutationToArray()},当前最优适应度：{best_fitness}")
+print(f"当前最优解：{best_solution.array_2d},当前最优适应度：{best_fitness}")
 env.reset(fbs_model=best_solution)
 env.render()

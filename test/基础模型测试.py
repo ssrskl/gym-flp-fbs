@@ -14,8 +14,12 @@ from stable_baselines3 import PPO
 from loguru import logger
 
 themeName = "基础模型训练"
-instance = "O9-maoyan"
+instance = "SC35-maoyan"
+algorithm = "PPO"
+policy = "MlpPolicy"
 total_timesteps = 10_000
+
+
 env = gym.make("FbsEnv-v0", instance=instance)
 obs = env.reset()
 current_path = os.path.dirname(os.path.abspath(__file__))
@@ -24,7 +28,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 #     f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-DQN-{instance}-{total_timesteps}"
 # )
 model = PPO.load(
-    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-PPO-{instance}-{total_timesteps}"
+    f"/Users/maoyan/Codes/Python/gym-flp-fbs/models/基础模型训练-{algorithm}-{policy}-{instance}-{total_timesteps}"
 )
 
 max_steps = 10000

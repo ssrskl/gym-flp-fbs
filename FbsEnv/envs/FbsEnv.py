@@ -114,7 +114,7 @@ class FBSEnv(gym.Env):
         logger.debug("--------------------------------------------------")
         return self.state
 
-    def calculate_reward(self):
+    def calculate_reward_1(self):
         # 计算MHC改善程度
         # mhc_improvement = ((self.previous_MHC - self.MHC) /
         #                    self.previous_MHC if self.previous_MHC else 0)
@@ -138,6 +138,9 @@ class FBSEnv(gym.Env):
         # 适应度和MHC的惩罚
         # reward = self.MHC - self.fitness
         return reward
+
+    def calculate_reward_2(self):
+        return -self.fitness
 
     def step(self, action):
         # 根据action执行相应的操作
@@ -196,7 +199,7 @@ class FBSEnv(gym.Env):
         # 更新状态字典
         self.state = self.constructState()
         # 计算奖励函数
-        reward = self.calculate_reward()
+        reward = self.calculate_reward_1()
         self.previous_fitness = self.fitness
         # 更新info字典，包含更多的调试信息
         info = {
