@@ -3,9 +3,13 @@ import pandas as pd
 import os
 import numpy as np
 import FbsEnv
+import datetime
 
 def save_experiment_result(
-    exp_instance, exp_algorithm ,exp_iterations,exp_solution, exp_fitness, exp_start_time, exp_end_time
+    exp_instance, exp_algorithm ,exp_iterations,exp_solution, exp_fitness, 
+    exp_start_time,
+    exp_fast_time, 
+    exp_end_time
 ):
     """
     保存实验结果
@@ -19,8 +23,10 @@ def save_experiment_result(
             "解": [exp_solution],
             "适应度值": [exp_fitness],
             "开始时间": [exp_start_time],
+            "最快时间": [exp_fast_time],
             "结束时间": [exp_end_time],
-            "运行时间": [exp_end_time - exp_start_time],
+            "运行时间": [(exp_end_time - exp_start_time).total_seconds()],
+            "最快最佳结果时间": [(exp_fast_time - exp_start_time).total_seconds()],
         }
     )
     # 保存实验结果

@@ -154,17 +154,11 @@ def random_solution_generator(n: int) -> tuple[list[int], list[int]]:
     # 生成随机排列
     permutation = np.arange(1, n + 1)
     np.random.shuffle(permutation)
-
-    # 生成随机bay划分
-    bay = np.zeros(n, dtype=int)
-    # 随机选择1-3个位置设置为1(不包括最后一个位置)
-    num_ones = np.random.randint(1, min(4, n - 1))
-    positions = np.random.choice(n - 1, num_ones, replace=False)
-    bay[positions] = 1
-    # 确保最后一个位置为1
+    # 生成随机的0-1序列
+    bay = np.random.randint(0, 2, n)
+    # 确保最后一个元素为1
     bay[-1] = 1
-
-    return permutation.tolist(), bay.tolist()
+    return (permutation, bay)
 
 
 # k分初始解生成器(输入：面积数据a，设施数n，横纵比限制beta，厂房x轴长度L)

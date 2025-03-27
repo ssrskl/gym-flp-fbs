@@ -77,8 +77,8 @@ class FBSEnv(gym.Env):
 
     def reset(self, fbs_model: FBSModel = None):
         if fbs_model is None:
-            permutation, bay = FBSUtil.binary_solution_generator(
-                self.areas, self.n, self.fac_limit_aspect, self.W)  # 采用k分初始解生成器
+            permutation, bay = FBSUtil.binary_solution_generator(self.areas, self.n, self.fac_limit_aspect, self.W)  # 采用k分初始解生成器
+            # permutation,bay = FBSUtil.random_solution_generator(self.n) # 采用随机初始解生成器
             bay[-1] = 1  # bay的最后一个位置必须是1，表示最后一个设施是bay的结束
             self.fbs_model = FBSModel(
                 permutation.astype(int).tolist(),
