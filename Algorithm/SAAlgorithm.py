@@ -46,10 +46,12 @@ def simulated_annealing(env, max_iterations=10000, initial_temp=10000.0, alpha=0
     return iteration,best_solution, best_fitness,start_time,end_time,fast_time # 返回最优解和最优适应度
 
 if __name__ == "__main__":
-    exp_instance = "O9-maoyan"
+    exp_instance = "Du62"
     exp_algorithm = "模拟退火算法"
     exp_remark = "取消修复动作算子-K分初始解"
-    for i in range(10):
+    exp_number = 30
+    for i in range(exp_number):
+        logger.info(f"第{i+1}次实验")
         env = gym.make("FbsEnv-v0", instance=exp_instance)
         iteration,best_solution, best_fitness,exp_start_time,exp_end_time,exp_fast_time = simulated_annealing(env)
         print(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")

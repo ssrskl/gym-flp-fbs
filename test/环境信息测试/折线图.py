@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-n = 10
-instance = "AB20-ar3"
-file_path = f"/Users/maoyan/Codes/Python/gym-flp-fbs/Files/ExpResult/{instance}-模拟退火算法.xlsx"
-
+n = 30
+instance = "Du62"
+file_path = f"/Users/maoyan/Codes/Python/gym-flp-fbs/Files/ExpResult/{instance}-模拟退火算法1.xlsx"
+is_repair = True
 # 提取数据
 datas = []
 df = pd.read_excel(file_path)
@@ -29,7 +29,13 @@ labels = [
 ]
 
 # 绘制多个数据系列的折线图
-for i, y in enumerate(datas[0:2]):
+if is_repair:
+    labels = labels[:2]
+    datas = datas[:2]
+else:
+    labels = labels[2:]
+    datas = datas[2:]
+for i, y in enumerate(datas):
     plt.plot(x, y, label=labels[i], marker="o")
     for xi, yi in zip(x, y):
         plt.text(xi, yi, str(round(yi, 2)), ha="center", va="bottom")  # 保留两位小数
