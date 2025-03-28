@@ -9,7 +9,8 @@ def save_experiment_result(
     exp_instance, exp_algorithm ,exp_iterations,exp_solution, exp_fitness, 
     exp_start_time,
     exp_fast_time, 
-    exp_end_time
+    exp_end_time,
+    exp_remark = ""
 ):
     """
     保存实验结果
@@ -27,6 +28,7 @@ def save_experiment_result(
             "结束时间": [exp_end_time],
             "运行时间": [(exp_end_time - exp_start_time).total_seconds()],
             "最快最佳结果时间": [(exp_fast_time - exp_start_time).total_seconds()],
+            "备注": [exp_remark],
         }
     )
     # 保存实验结果
