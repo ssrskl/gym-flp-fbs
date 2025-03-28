@@ -18,6 +18,8 @@ pip install loguru
 pip install colorlog
 # 安装ipykernel，用于在jupyter notebook中使用自定义的gym环境
 pip install ipykernel -i https://pypi.tuna.tsinghua.edu.cn/simple
+# 安装openpyxl，用于读取excel文件
+pip install openpyxl
 ```
 
 ## 使用
