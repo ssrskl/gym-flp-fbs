@@ -2,19 +2,19 @@
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
-import logging
+from loguru import logger
 from FbsEnv.utils.FBSUtil import FBSUtils
 from FbsEnv.envs.FBSModel import FBSModel
 
 instance = "O9-maoyan"
 
-parent1 = FBSModel([1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6])
-parent2 = FBSModel([6, 5, 4, 3, 2, 1], [6, 5, 4, 3, 2, 1])
+parent1 = FBSModel([1, 2, 3, 4, 5, 6], [0, 0, 0, 1, 0, 1])
+parent2 = FBSModel([6, 5, 4, 3, 2, 1], [0, 0, 1, 0,0, 1])
 
 offspring1, offspring2 = FBSUtils.CrossoverActions.order_crossover(
     parent1, parent2)
 
-logging.info(offspring1.permutation)
-logging.info(offspring1.bay)
-logging.info(offspring2.permutation)
-logging.info(offspring2.bay)
+logger.info(offspring1.permutation)
+logger.info(offspring1.bay)
+logger.info(offspring2.permutation)
+logger.info(offspring2.bay)
