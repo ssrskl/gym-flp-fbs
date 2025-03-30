@@ -1,5 +1,4 @@
-# 完成遗传算法类以及测试脚本
-
+# 遗传算法解决FBS问题，已经废弃
 import copy
 import os
 import random

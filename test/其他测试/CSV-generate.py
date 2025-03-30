@@ -4,12 +4,11 @@ import ast
 import pandas as pd
 from FbsEnv.utils import FBSUtil
 
-instance = "O9-maoyan"
+instance = "O7-maoyan"
 fitness = "unknown"
 array = [
-[7,8],
-[4,1,2],
-[3,6,9,5]
+[3,7,5],
+[6,2,1,4]
 ]
 
 # 生成CSV文件
