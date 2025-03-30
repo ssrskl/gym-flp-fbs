@@ -148,18 +148,28 @@ class GeneticAlgorithm:
 
 if __name__ == "__main__":
     # 实验参数
-    exp_instance = "O9-maoyan"
+    exp_instance = "Du62"
     exp_algorithm = "遗传算法"
     exp_remark = "基本遗传算法实现"
-    exp_number = 1  # 运行次数
+    exp_number = 30  # 运行次数
     is_exp = False  # 是否进行实验
-
-    ga = GeneticAlgorithm(
-        env=gym.make("FbsEnv-v0", instance=exp_instance),
-        population_size=50,
-        crossover_rate=0.8,
-        mutation_rate=0.1,
-        max_generations=100,
-    )
-    best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time = ga.run()
-    logger.info(f"Best Solution: {best_solution.fbs_model.array_2d}, Best Fitness: {best_fitness}")
+    # 算法参数
+    population_size = 50
+    crossover_rate = 0.8
+    mutation_rate = 0.1
+    max_generations = 62*10 # 最大迭代次数
+    env = gym.make("FbsEnv-v0", instance=exp_instance)
+    if is_exp:
+        pass
+    else:    
+        ga = GeneticAlgorithm(
+            env=env,
+            population_size=50,
+            crossover_rate=0.8,
+            mutation_rate=0.1,
+            max_generations=100,
+        )
+        best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time = ga.run()
+        logger.info(f"Best Solution: {best_solution.fbs_model.array_2d}, Best Fitness: {best_fitness}")
+        env.reset(fbs_model=best_solution.fbs_model)
+        env.render()
