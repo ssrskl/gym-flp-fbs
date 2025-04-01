@@ -48,7 +48,7 @@ def simulated_annealing(env, max_iterations=10000, initial_temp=10000.0, alpha=0
 
 if __name__ == "__main__":
     # 实验参数
-    exp_instance = "Du62"
+    exp_instance = "VC10"
     exp_algorithm = "模拟退火算法"
     exp_remark = "包含修复动作算子-K分初始解"
     exp_number = 30

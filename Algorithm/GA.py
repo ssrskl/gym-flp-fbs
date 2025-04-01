@@ -200,7 +200,7 @@ if __name__ == "__main__":
     )  # 检查是否有可用的MPS设备
     logger.info(f"使用设备: {device}")
     # 实验参数
-    exp_instance = "O7-maoyan"
+    exp_instance = "Du62"
     exp_algorithm = "遗传算法"
     exp_remark = "带局部优化"
     exp_number = 30  # 运行次数

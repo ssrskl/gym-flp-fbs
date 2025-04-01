@@ -1,0 +1,114 @@
+digraph GeneticAlgorithmFlowchart {
+    rankdir=TB;
+    node [shape=box];
+    
+    // 开始
+    Start [label="开始"];
+    
+    // 初始化参数
+    InitParams [label="初始化参数\npopulation_size, crossover_rate,\nmutation_rate, max_generations"];
+    
+    // 创建环境和种群
+    CreateEnvPop [label="创建环境env和种群population"];
+    
+    // 主循环
+    MainLoop [label="循环(generation = 0 to max_generations)"];
+    
+    // 计算适应度
+    CalcFitness [label="计算种群适应度值\nfitness_values"];
+    
+    // 选择精英个体
+    SelectElite [label="选择精英个体\nelite_population"];
+    
+    // 新种群初始化
+    NewPopInit [label="新种群new_population初始化为精英个体"];
+    
+    // 选择操作
+    Selection {
+        label="选择操作";
+        style=filled;
+        color=lightblue;
+        // 锦标赛选择
+        TournamentSelect [label="锦标赛选择法\ntournament_size = 5\n从population中选tournament\nbest_in_tournament"];
+        // 选择父代1
+        SelectParent1 [label="选择父代1\nparent1 = best_in_tournament"];
+        // 选择父代2
+        SelectParent2 [label="选择父代2\nparent2 = best_in_tournament"];
+    }
+    
+    // 交叉操作
+    Crossover {
+        label="交叉操作";
+        style=filled;
+        color=lightgreen;
+        // 判断是否交叉
+        CrossCheck [label="判断是否交叉\nrandom() < crossover_rate"];
+        // OX交叉和单点交叉
+        OXSingleCross [label="对permutation使用OX交叉，对bay使用单点交叉\noffspring1_fbs_model, offspring2_fbs_model"];
+        // 创建子代1
+        CreateOffspring1 [label="创建子代1\noffspring1"];
+        // 创建子代2
+        CreateOffspring2 [label="创建子代2\noffspring2"];
+        // 不交叉情况
+        NoCross [label="不交叉，子代等于父代\noffspring1 = parent1, offspring2 = parent2"];
+    }
+    
+    // 变异操作
+    Mutation {
+        label="变异操作";
+        style=filled;
+        color=orange;
+        // 判断是否变异
+        MutateCheck [label="判断是否变异\nrandom() < mutation_rate"];
+        // RL变异
+        RLMutate [label="RL变异\n使用DQN模型预测action\n执行变异操作并更新DQN"];
+        // 随机变异
+        RandomMutate [label="随机变异\n随机选择变异类型action\n执行变异操作"];
+        // 不变异情况
+        NoMutate [label="不变异，子代不变"];
+    }
+    
+    // 添加子代到新种群
+    AddChildren [label="将子代添加到新种群"];
+    
+    // 更新种群
+    UpdatePop [label="更新种群population"];
+    
+    // 评估当前最佳解
+    EvalBest [label="评估当前种群最佳解\ncurrent_best, current_best_fitness"];
+    
+    // 更新最优解
+    UpdateBest [label="如果current_best_fitness < best_fitness\n更新best_fitness和best_solution"];
+    
+    // 结束
+    End [label="结束\n返回best_solution, best_fitness等"];
+    
+    // 边连接
+    Start -> InitParams;
+    InitParams -> CreateEnvPop;
+    CreateEnvPop -> MainLoop;
+    MainLoop -> CalcFitness;
+    CalcFitness -> SelectElite;
+    SelectElite -> NewPopInit;
+    NewPopInit -> TournamentSelect;
+    TournamentSelect -> SelectParent1;
+    TournamentSelect -> SelectParent2;
+    SelectParent1 -> CrossCheck;
+    SelectParent2 -> CrossCheck;
+    CrossCheck -> OXSingleCross [label="是"];
+    CrossCheck -> NoCross [label="否"];
+    OXSingleCross -> CreateOffspring1;
+    OXSingleCross -> CreateOffspring2;
+    CreateOffspring1 -> MutateCheck;
+    CreateOffspring2 -> MutateCheck;
+    MutateCheck -> RLMutate [label="是"];
+    MutateCheck -> NoMutate [label="否"];
+    RLMutate -> AddChildren;
+    NoMutate -> AddChildren;
+    NoCross -> MutateCheck;
+    AddChildren -> UpdatePop;
+    UpdatePop -> EvalBest;
+    EvalBest -> UpdateBest;
+    UpdateBest -> MainLoop [label="generation < max_generations"];
+    UpdateBest -> End [label="generation == max_generations"];
+}    

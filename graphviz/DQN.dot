@@ -1,0 +1,141 @@
+digraph DQN_Genetic_Algorithm {
+    rankdir=TB;
+    node [shape=box];
+    edge [arrowhead=vee];
+
+    // 全局变量
+    global_vars [
+        label="全局变量\npopulation_size=100\ncrossover_rate=0.8\nmutation_rate=0.1\nmax_generations=500\ngamma=0.99\nbuffer_size=1e6\nlearning_rate=1e-4",
+        shape=note,
+        style=filled,
+        color=lightgray
+    ]
+
+    // 开始
+    Start [label="开始"];
+
+    // 初始化参数
+    InitParams [
+        label="初始化参数\npopulation_size,\ncrossover_rate,\nmutation_rate,\nmax_generations,\nDQN_hyperparams"
+    ];
+
+    // 创建环境和种群
+    CreateEnvPop [
+        label="创建环境env\n初始化种群population\n初始化DQN模型"
+    ];
+
+    // DQN 组件
+    DQN_Components [
+        label="DQN 核心组件\nobs -> Q-Network -> action\nreplay_buffer\noptimizer\nloss_function\ntarget_network",
+        shape=record,
+        style=filled,
+        color=lightblue
+    ];
+
+    // 主循环
+    MainLoop [label="循环(generation = 0 to max_generations)"];
+
+    // 计算适应度
+    CalcFitness [label="计算种群适应度值\nfitness_values"];
+
+    // 选择精英个体
+    SelectElite [label="选择精英个体\nelite_population"];
+
+    // 新种群初始化
+    NewPopInit [label="新种群new_population初始化为精英个体"];
+
+    // 选择操作
+    Selection [
+        label="选择操作",
+        style=filled,
+        color=lightblue
+    ];
+
+    // 交叉操作
+    Crossover [
+        label="交叉操作",
+        style=filled,
+        color=lightgreen
+    ];
+
+    // 变异操作（整合DQN）
+    Mutation [
+        label="变异操作",
+        style=filled,
+        color=orange
+    ];
+
+    // DQN 训练子图
+    DQNTraining [
+        label="DQN 训练",
+        shape=none,
+        style=filled,
+        color=lightcyan
+    ];
+
+    // 评估与更新
+    EvalUpdate [
+        label="评估与更新",
+        shape=none
+    ];
+
+    // 结束
+    End [label="结束\n返回best_solution,\nbest_fitness,\nDQN_policy"];
+
+    // 节点连接
+    Start -> InitParams;
+    InitParams -> CreateEnvPop;
+    CreateEnvPop -> DQN_Components;
+    CreateEnvPop -> MainLoop;
+    MainLoop -> CalcFitness;
+    CalcFitness -> SelectElite;
+    SelectElite -> NewPopInit;
+    NewPopInit -> Selection;
+    Selection -> Crossover;
+    Crossover -> Mutation;
+    Mutation -> DQNTraining;
+    DQNTraining -> EvalUpdate;
+    EvalUpdate -> MainLoop;
+    MainLoop -> End [label="终止条件满足"];
+
+    // DQN 训练流程
+    DQNTraining -> obs [label="获取当前状态obs"];
+    obs -> QNetwork [label="输入到Q网络"];
+    QNetwork -> action [label="输出动作action"];
+    action -> environment [label="执行动作"];
+    environment -> next_obs [label="获取下一状态next_obs"];
+    environment -> reward [label="获取奖励reward"];
+    environment -> done [label="获取终止标志done"];
+    next_obs -> replay_buffer [label="存储到经验池"];
+    reward -> replay_buffer;
+    done -> replay_buffer;
+    replay_buffer -> sample [label="随机采样batch"];
+    sample -> compute_loss [label="计算TD误差"];
+    compute_loss -> optimizer [label="更新Q网络"];
+    optimizer -> QNetwork;
+    QNetwork -> target_network [label="定期同步参数"];
+
+    // 变异操作细节
+    Mutation -> MutateCheck [label="判断是否变异\ngamma=0.99"];
+    MutateCheck -> RLMutate [label="是 (p=mutation_rate)"];
+    MutateCheck -> RandomMutate [label="否"];
+    RLMutate -> DQN_Components [label="调用DQN生成动作"];
+    RandomMutate -> RandomAction [label="生成随机动作"];
+    RLMutate -> ApplyMutation [label="应用变异"];
+    RandomMutate -> ApplyMutation;
+    ApplyMutation -> AddChildren [label="添加子代到新种群"];
+
+    // 变量标注
+    population_size [label="population_size=100", shape=oval, color=gray];
+    crossover_rate [label="crossover_rate=0.8", shape=oval, color=gray];
+    mutation_rate [label="mutation_rate=0.1", shape=oval, color=gray];
+    max_generations [label="max_generations=500", shape=oval, color=gray];
+    learning_rate [label="learning_rate=1e-4", shape=oval, color=gray];
+    buffer_size [label="buffer_size=1e6", shape=oval, color=gray];
+
+    // 约束布局
+    {rank=same; Start InitParams CreateEnvPop}
+    {rank=same; MainLoop}
+    {rank=same; End}
+    {rank=same; DQN_Components}
+}
