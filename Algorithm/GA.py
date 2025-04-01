@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 import random
 import copy
@@ -9,6 +10,7 @@ from FbsEnv.utils.FBSUtil import FBSUtils
 from loguru import logger
 import FbsEnv.utils.ExperimentsUtil as ExperimentsUtil
 import warnings
+from stable_baselines3 import DQN
 
 warnings.filterwarnings("ignore", module="gym")  # 忽略gym的警告
 
@@ -20,6 +22,8 @@ class GeneticAlgorithm:
         crossover_rate=0.8,
         mutation_rate=0.1,
         max_generations=100,
+        dqn_train_freq=4,
+        dqn_learning_starts=1000
     ):
         """
         初始化遗传算法参数
@@ -34,6 +38,16 @@ class GeneticAlgorithm:
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
         self.max_generations = max_generations
+        self.dqn_model = DQN(
+            "MlpPolicy",
+            env,
+            verbose=0,
+            learning_rate=1e-3,
+            buffer_size=10000,
+            learning_starts=dqn_learning_starts,
+            batch_size=32,
+            train_freq=dqn_train_freq
+        )
         self.population = self.initialize_population()
 
     def initialize_population(self):
@@ -86,17 +100,36 @@ class GeneticAlgorithm:
             return offspring1, offspring2
         else:
             return parent1, parent2
-
+    def rl_mutate(self, individual):
+        if random.random() < self.mutation_rate:
+            action,_ = self.dqn_model.predict(individual.state, deterministic=False)  # 训练DQN模型
+            original_fitness = individual.fitness  # 记录原始适应度
+            original_state = individual.state  # 记录原始状态
+            new_state, reward, done, info = individual.step(action)  # 执行变异操作
+            self.dqn_model.replay_buffer.add(
+                obs=original_state,
+                next_obs=new_state,
+                action=action,
+                reward=reward,
+                done=done,
+                infos=[info]
+            )  # 将新状态添加到回放缓冲区
+            if self.dqn_model.num_timesteps > self.dqn_model.learning_starts:
+                self.dqn_model.learn(total_timesteps=1000)  # 训练DQN模型
+        return individual
     def mutate(self, individual):
         """
-        变异操作：对permutation交换两个位置，对bay随机翻转一位
+        变异操作：
         :param individual: 个体
         :return: 变异后的个体
         """
         if random.random() < self.mutation_rate:
-            action = np.random.randint(0, 4)
-            individual.step(action)
-        return individual
+            action  = np.random.randint(0, 3)  # 随机选择变异类型
+            individual.step(action)  # 执行变异操作
+            return individual
+        else:
+            return individual
+        
 
     # TODO 修复局部优化问题
     def local_optimize(self, individual):
@@ -135,17 +168,17 @@ class GeneticAlgorithm:
                 parent1 = self.select()
                 parent2 = self.select()
                 child1, child2 = self.crossover(parent1, parent2)
-                child1 = self.mutate(child1)
-                child2 = self.mutate(child2)
+                child1 = self.rl_mutate(child1)
+                child2 = self.rl_mutate(child2)
                 new_population.extend([child1, child2])
             self.population = new_population[: self.population_size]  # 更新种群
 
             # 对最佳个体进行局部优化
             best_individual = min(self.population, key=lambda ind: self.evaluate_fitness(ind))
-            optimized_individual = self.local_optimize(best_individual)
-            # 替换种群中最差个体
-            worst_index = np.argmax(fitness_values)
-            self.population[worst_index] = optimized_individual
+            # optimized_individual = self.local_optimize(best_individual)
+            # # 替换种群中最差个体
+            # worst_index = np.argmax(fitness_values)
+            # self.population[worst_index] = optimized_individual
 
             # 评估当前种群最佳解
             current_best = min(self.population, key=lambda ind: self.evaluate_fitness(ind))
@@ -162,6 +195,10 @@ class GeneticAlgorithm:
 
 
 if __name__ == "__main__":
+    device = (
+    "mps" if torch.backends.mps.is_available() else "cpu"
+    )  # 检查是否有可用的MPS设备
+    logger.info(f"使用设备: {device}")
     # 实验参数
     exp_instance = "O7-maoyan"
     exp_algorithm = "遗传算法"

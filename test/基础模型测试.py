@@ -14,7 +14,7 @@ from stable_baselines3 import PPO
 from loguru import logger
 
 themeName = "基础模型训练"
-instance = "SC35-maoyan"
+instance = "Du62"
 algorithm = "PPO"
 policy = "MlpPolicy"
 total_timesteps = 10_000

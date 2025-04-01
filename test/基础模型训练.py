@@ -17,7 +17,7 @@ device = (
 )  # 检查是否有可用的MPS设备
 logger.info(f"使用设备: {device}")
 themeName = "基础模型训练"
-instance = "SC35-maoyan"
+instance = "Du62"
 algorithm = "PPO"
 policy = "MlpPolicy"
 total_timesteps = 10_000
