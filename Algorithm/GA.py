@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # 实验参数
     exp_instance = "Du62"
     exp_algorithm = "RL+遗传算法"
-    exp_remark = "实验"
+    exp_remark = "包含修复动作算子-随机初始解"
     exp_number = 30  # 运行次数
     is_exp = False  # 是否进行实验
     # 算法参数

@@ -8,6 +8,10 @@ is_repair = True
 # 提取数据
 datas = []
 df = pd.read_excel(file_path)
+# 根据备注分组
+groups = df.groupby('备注')
+
+
 x = list(range(1, n + 1))
 repair_random = df[df['备注'] == '包含修复动作算子-随机初始解']['适应度值'].tolist()
 repair_random.sort()
