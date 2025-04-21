@@ -172,17 +172,14 @@ def binary_solution_generator(area, n, beta, L):
     print("总面积: ", total_area)
     # 生成一个设施默认的编号序列
     permutation = np.arange(1, n + 1)
-    # 根据area对序列进行排序
-    permutation = permutation[np.argsort(area[permutation - 1])]
-    # 对a也进行排序
-    area = np.sort(area)
+    # 不再排序，直接使用原始的area和permutation
+    
     while k <= n:
         # 计算W的k分
         l = L / k
         w = area / l  # 每个设施的宽度
         aspect_ratio = np.maximum(w, l) / np.minimum(w, l)
         # 验证k分是否可行
-        # print("a/l", a / l)
         # 合格个数
         if beta is not None:
             qualified_number = np.sum((aspect_ratio >= 1) & (aspect_ratio <= beta))
@@ -191,11 +188,8 @@ def binary_solution_generator(area, n, beta, L):
         # 如果合格个数大于等于3/4*n，即此k值可行
         bay = np.zeros(n)
         if qualified_number >= n * 3 / 4:
-            # print("可行的k: ", k)
-            # print("符合的个数: ", qualified_number)
             # 根据面积和找到k分界点
             best_partition, partitions = _find_best_partition(area, k)
-            # print("序列分界点: ", best_partition)
             # 将k分界点转换为bay
             for i, p in enumerate(best_partition):
                 bay[p - 1] = 1
@@ -203,22 +197,21 @@ def binary_solution_generator(area, n, beta, L):
             bay[n - 1] = 1
             bay_list.append(bay)
         k += 1
-    # print("可行的bay: ", bay_list)
     # 从可行的bay中随机选择一个
     if len(bay_list) > 0:
         bay = random.choice(bay_list)
-    #  TODO 对permutation使用bay进行划分，并对每个bay中的设施进行随机排列
+    #  对permutation使用bay进行划分，并对每个bay中的设施进行随机排列
     j = 0
     for i in range(len(bay)):
         if bay[i] == 1:
-            np.random.shuffle(permutation[j:i])
+            np.random.shuffle(permutation[j:i+1])
             j = i + 1
     return (permutation, bay)
 
 
 # k分划分法的动态规划版（输入：排列序列a，划分数k）
 def _find_best_partition(arr, k):
-    print(f"k分划分法-->k = {k}")
+    # print(f"k分划分法-->k = {k}")
     n = len(arr)
     target_sum = np.sum(arr) // k
 
