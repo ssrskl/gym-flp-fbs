@@ -1,0 +1,48 @@
+digraph QLearningFlowchart {
+    rankdir=TB;
+    node [shape=rectangle];
+
+    // 初始状态
+    Start [label="开始\n初始化: s_dim, a_dim, lr, gamma, exp_noise\nQ = zeros((s_dim, a_dim))"];
+
+    // 环境重置
+    ResetEnv [label="env.reset()\n获取初始状态 s"];
+
+    // 选择动作
+    SelectAction [label="选择动作 a\nif deterministic:\n    a = argmax(Q[s, :])\nelse:\n    if random < epsilon:\n        a = random.choice(a_dim)\n    else:\n        a = argmax(Q[s, :])"];
+
+    // 执行动作
+    StepEnv [label="env.step(a)\n获取 s_next, r, dw, tr, info"];
+
+    // 检查是否完成
+    CheckDone [label="done = (dw or tr)"];
+
+    // 更新 Q 表
+    UpdateQ [label="更新 Q 表\nQ_sa = Q[s, a]\ntarget_Q = r + (1 - dw) * gamma * max(Q[s_next, :])\nQ[s, a] += lr * (target_Q - Q_sa)"];
+
+    // 奖励累加
+    RewardSum [label="ep_r += r"];
+
+    // 步数累加
+    StepCount [label="steps += 1"];
+
+    // 状态更新
+    StateUpdate [label="s = s_next"];
+
+    // 结束条件
+    EndCondition [label="是否 done?"];
+    End [label="结束\n返回 ep_r"];
+
+    // 连接各节点
+    Start -> ResetEnv;
+    ResetEnv -> SelectAction;
+    SelectAction -> StepEnv;
+    StepEnv -> CheckDone;
+    CheckDone -> UpdateQ;
+    UpdateQ -> RewardSum;
+    RewardSum -> StepCount;
+    StepCount -> StateUpdate;
+    StateUpdate -> EndCondition;
+    EndCondition -> SelectAction [label="否"];
+    EndCondition -> End [label="是"];
+}    

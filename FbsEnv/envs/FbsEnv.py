@@ -75,7 +75,7 @@ class FBSEnv(gym.Env):
         logger.debug(f"设施总宽度W: {self.W}")
         logger.debug("--------------------------------------------------")
 
-    def reset(self, fbs_model: FBSModel = None):
+    def reset(self, fbs_model = None):
         if fbs_model is None:
             permutation, bay = FBSUtil.binary_solution_generator(self.areas, self.n, self.fac_limit_aspect, self.W)  # 采用k分初始解生成器
             # permutation,bay = FBSUtil.random_solution_generator(self.n) # 采用随机初始解生成器
@@ -290,6 +290,10 @@ class FBSEnv(gym.Env):
             ((sinks - np.min(sinks)) / (np.max(sinks) - np.min(sinks)))
             * 255
         ).astype(np.uint8)
+        # 白色
+        # R = np.ones(self.n) * 255
+        # G = np.ones(self.n) * 255
+        # B = np.ones(self.n) * 255
         state[:, 0] = R
         state[:, 1] = G
         state[:, 2] = B

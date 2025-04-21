@@ -201,15 +201,15 @@ if __name__ == "__main__":
     logger.info(f"使用设备: {device}")
     # 实验参数
     exp_instance = "Du62"
-    exp_algorithm = "遗传算法"
-    exp_remark = "带局部优化"
+    exp_algorithm = "RL+遗传算法"
+    exp_remark = "实验"
     exp_number = 30  # 运行次数
     is_exp = False  # 是否进行实验
     # 算法参数
     population_size = 50
     crossover_rate = 0.8
     mutation_rate = 0.1
-    max_generations = 7 * 10  # 最大迭代次数
+    max_generations = 62 * 10  # 最大迭代次数
     env = gym.make("FbsEnv-v0", instance=exp_instance)
     ga = GeneticAlgorithm(
         env=env,
@@ -227,7 +227,7 @@ if __name__ == "__main__":
                 population_size=population_size,
                 crossover_rate=crossover_rate,
                 mutation_rate=mutation_rate,
-                max_generations=max_generations,
+                max_generations=max_generations,                  
             )
             best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time = ga.run()
             print(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")

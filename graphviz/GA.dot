@@ -62,8 +62,6 @@ digraph GeneticAlgorithmFlowchart {
         MutateCheck [label="判断是否变异\nrandom() < mutation_rate"];
         // RL变异
         RLMutate [label="RL变异\n使用DQN模型预测action\n执行变异操作并更新DQN"];
-        // 随机变异
-        RandomMutate [label="随机变异\n随机选择变异类型action\n执行变异操作"];
         // 不变异情况
         NoMutate [label="不变异，子代不变"];
     }
