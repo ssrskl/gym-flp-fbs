@@ -169,11 +169,12 @@ def binary_solution_generator(area, n, beta, L):
     k = 2
     # 计算面积之和
     total_area = np.sum(area)
-    print("总面积: ", total_area)
-    # 生成一个设施默认的编号序列
+    # 生成一个随机的编号序列
     permutation = np.arange(1, n + 1)
+    np.random.shuffle(permutation)
+    # 生成一个设施默认的编号序列
+    # permutation = np.arange(1, n + 1)
     # 不再排序，直接使用原始的area和permutation
-    
     while k <= n:
         # 计算W的k分
         l = L / k

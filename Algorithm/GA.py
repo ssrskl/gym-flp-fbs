@@ -11,6 +11,7 @@ from loguru import logger
 import FbsEnv.utils.ExperimentsUtil as ExperimentsUtil
 import warnings
 from stable_baselines3 import DQN
+import torch.nn as nn
 
 warnings.filterwarnings("ignore", module="gym")  # 忽略gym的警告
 
@@ -39,14 +40,21 @@ class GeneticAlgorithm:
         self.mutation_rate = mutation_rate
         self.max_generations = max_generations
         self.dqn_model = DQN(
-            "MlpPolicy",
+            "CnnPolicy",  # 使用CNN策略
             env,
+            policy_kwargs=dict(
+                net_arch=[256, 256, 128],  # 更深层网络
+                activation_fn=nn.ReLU
+            ),
             verbose=0,
             learning_rate=1e-3,
-            buffer_size=10000,
+            buffer_size=50000,  # 增大缓冲区
             learning_starts=dqn_learning_starts,
-            batch_size=32,
-            train_freq=dqn_train_freq
+            batch_size=64,  # 增大批次大小
+            train_freq=dqn_train_freq,
+            gradient_steps=8,  # 增加梯度步数
+            target_update_interval=1000,  # 调整目标网络更新频率
+            exploration_fraction=0.2  # 控制探索率衰减
         )
         self.population = self.initialize_population()
 
@@ -114,8 +122,8 @@ class GeneticAlgorithm:
                 done=done,
                 infos=[info]
             )  # 将新状态添加到回放缓冲区
-            if self.dqn_model.num_timesteps > self.dqn_model.learning_starts:
-                self.dqn_model.learn(total_timesteps=1000)  # 训练DQN模型
+            if self.dqn_model.num_timesteps > self.dqn_model.learning_starts and self.dqn_model.num_timesteps % 100 == 0:
+               self.dqn_model.learn(total_timesteps=200)  # 训练DQN模型
         return individual
     def mutate(self, individual):
         """

@@ -26,7 +26,7 @@ def simulated_annealing(env, max_iterations=10000, initial_temp=10000.0, alpha=0
 
     for iteration in range(max_iterations):
         if current_temp <= 1e-8: break # 温度过低，结束搜索
-        action = np.random.randint(0, 3) # 随机选择动作
+        action = np.random.randint(0, 4) # 随机选择动作
         next_state, reward, done, info = env.step(action) # 执行动作
         next_fitness = env.fitness # 获取下一个适应度
         delta_fitness = next_fitness - current_fitness # 计算适应度变化
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # 实验参数
     exp_instance = "Du62"
     exp_algorithm = "模拟退火算法"
-    exp_remark = "不包含修复动作算子-k分初始解v2"
+    exp_remark = "包含修复动作算子-k分初始解v3"
     exp_number = 30
     is_exp = True
     # 算法参数
