@@ -10,27 +10,32 @@ def save_experiment_result(
     exp_start_time,
     exp_fast_time, 
     exp_end_time,
-    exp_remark = ""
+    exp_remark = "",
+    exp_best_time = None
 ):
     """
     保存实验结果
     """
     # 保存实验结果
-    exp_result = pd.DataFrame(
-        {
-            "实例": [exp_instance],
-            "算法": [exp_algorithm],
-            "迭代次数": [exp_iterations],
-            "解": [exp_solution],
-            "适应度值": [exp_fitness],
-            "开始时间": [exp_start_time],
-            "最快时间": [exp_fast_time],
-            "结束时间": [exp_end_time],
-            "运行时间": [(exp_end_time - exp_start_time).total_seconds()],
-            "最快最佳结果时间": [(exp_fast_time - exp_start_time).total_seconds()],
-            "备注": [exp_remark],
-        }
-    )
+    result_dict = {
+        "实例": [exp_instance],
+        "算法": [exp_algorithm],
+        "迭代次数": [exp_iterations],
+        "解": [exp_solution],
+        "适应度值": [exp_fitness],
+        "开始时间": [exp_start_time],
+        "最快时间": [exp_fast_time],
+        "结束时间": [exp_end_time],
+        "运行时间": [(exp_end_time - exp_start_time).total_seconds()],
+        "最快最佳结果时间": [(exp_fast_time - exp_start_time).total_seconds()],
+        "备注": [exp_remark],
+    }
+    
+    # 如果提供了最佳解训练时间，则添加到结果中
+    if exp_best_time is not None:
+        result_dict["最佳解训练时间(秒)"] = [exp_best_time]
+    
+    exp_result = pd.DataFrame(result_dict)
     
     # 确保目录存在
     os.makedirs("/Users/maoyan/Codes/Python/gym-flp-fbs/Files/ExpResult", exist_ok=True)
@@ -64,8 +69,9 @@ if __name__ == "__main__":
     exp_start_time = datetime.datetime.now()
     exp_fast_time = datetime.datetime.now()
     exp_end_time = datetime.datetime.now()
+    exp_best_time = 60.5  # 测试最佳解的训练时间(秒)
     exp_result = save_experiment_result(
         exp_instance, exp_algorithm, exp_iterations, exp_solution, exp_fitness, 
-        exp_start_time, exp_fast_time, exp_end_time
+        exp_start_time, exp_fast_time, exp_end_time, exp_remark="测试", exp_best_time=exp_best_time
     )
     print(exp_result)

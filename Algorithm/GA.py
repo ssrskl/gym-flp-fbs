@@ -227,6 +227,7 @@ class GeneticAlgorithm:
         best_solution = None
         best_dqn_model = None
         best_generation = 0
+        best_time = None  # 添加最佳解的时间变量
         
         # 启用DQN的在线学习
         self.dqn_model.learn(total_timesteps=0)
@@ -262,6 +263,7 @@ class GeneticAlgorithm:
                 best_dqn_model = self.dqn_model
                 best_generation = generation
                 fast_time = datetime.datetime.now()
+                best_time = (fast_time - start_time).total_seconds()  # 记录从开始到获得最佳解的时间(秒)
                 
                 # 每当找到更好的解时，保存DQN模型
                 model_path = f"models/dqn_model_gen_{generation}_fitness_{best_fitness:.2f}"
@@ -281,8 +283,9 @@ class GeneticAlgorithm:
         # 记录训练相关信息
         logger.info(f"最佳适应度: {best_fitness}, 在第 {best_generation} 代获得")
         logger.info(f"总训练时间: {end_time - start_time}")
+        logger.info(f"获得最佳解用时: {best_time} 秒")
         
-        return best_solution, best_fitness, start_time, end_time, fast_time
+        return best_solution, best_fitness, start_time, end_time, fast_time, best_time
 
     def constructState(self):
         """
@@ -337,7 +340,7 @@ if __name__ == "__main__":
     logger.info(f"使用设备: {device}")
     
     # 实验参数
-    exp_instance = "Du62"
+    exp_instance = "O7-maoyan"
     exp_algorithm = "RL+遗传算法"
     exp_remark = "CNN-包含修复动作算子-K分初始解v3"
     exp_number = 30  # 运行次数
@@ -347,7 +350,7 @@ if __name__ == "__main__":
     population_size = 50
     crossover_rate = 0.8
     mutation_rate = 0.1
-    max_generations = 62 * 10  # 最大迭代次数
+    max_generations = 7 * 10  # 最大迭代次数
     dqn_train_freq = 4  # DQN训练频率
     dqn_learning_starts = 1000  # DQN开始学习的步数
     
@@ -377,7 +380,7 @@ if __name__ == "__main__":
                 dqn_learning_starts=dqn_learning_starts,
                 device=device
             )
-            best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time = ga.run()
+            best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time, best_time = ga.run()
             print(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")
             ExperimentsUtil.save_experiment_result(
                 exp_instance=exp_instance,
@@ -388,10 +391,12 @@ if __name__ == "__main__":
                 exp_start_time=exp_start_time,
                 exp_fast_time=exp_fast_time,
                 exp_end_time=exp_end_time,
-                exp_remark=exp_remark
+                exp_remark=exp_remark,
+                exp_best_time=best_time  # 添加最佳解的训练时间
             )
     else:
-        best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time = ga.run()
+        best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time, best_time = ga.run()
         logger.info(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")
+        logger.info(f"获得最佳解用时: {best_time} 秒")
         env.reset(fbs_model=best_solution)
         env.render()
