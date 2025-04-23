@@ -61,7 +61,18 @@ class FBSEnv(gym.Env):
             4: "idle",
         }  # 动作空间
         self.action_space = spaces.Discrete(len(self.actions))  # 动作空间
-        self.observation_space = spaces.Box(low=0, high=255, shape=(self.n * 3,), dtype=np.uint8)  # 状态空间
+        
+        # 计算状态向量长度：设施数 * 8个特征
+        state_size = self.n * 8
+        
+        # 为MLP策略初始化一维观察空间
+        self.observation_space = spaces.Box(
+            low=0, 
+            high=1, 
+            shape=(state_size,), 
+            dtype=np.float32
+        )
+        
         self.fitness = np.inf
 
         # ------------------调试信息------------------
@@ -110,39 +121,59 @@ class FBSEnv(gym.Env):
         logger.debug(f"设施移动矩阵: {self.TM}")
         logger.debug(f"设施移动矩阵: {self.MHC}")
         logger.debug(f"设施适应度: {self.fitness}")
-        logger.debug(f"状态: {self.state}")
+        logger.debug(f"状态向量形状: {self.state.shape}")
         logger.debug("--------------------------------------------------")
         return self.state
 
     def calculate_reward_1(self):
+        """
+        计算奖励函数 - 结合多个因素的综合奖励
+        1. 适应度改善程度（主要因素）
+        2. MHC改善程度（次要因素）
+        3. 约束满足情况（约束惩罚）
+        """
+        # 计算适应度改善程度（归一化到[-1, 1]范围）
+        fitness_improvement = 0
+        if self.previous_fitness > 0:
+            fitness_improvement = (self.previous_fitness - self.fitness) / max(self.previous_fitness, self.fitness) 
+        
         # 计算MHC改善程度
-        # mhc_improvement = ((self.previous_MHC - self.MHC) /
-        #                    self.previous_MHC if self.previous_MHC else 0)
-
-        # 计算约束违反惩罚
-        # aspect_ratio_penalty = sum(
-        #     max(0, ar - self.fac_limit_aspect) +
-        #     max(0, self.fac_limit_aspect - ar) for ar in self.fac_aspect_ratio)
-
-        # 计算fitness改善程度
-        fitness_improvement = ((self.previous_fitness - self.fitness) /
-                               self.fitness if self.previous_fitness else 0)
-
-        # # 综合奖励计算
+        mhc_improvement = 0
+        if hasattr(self, 'previous_MHC') and self.previous_MHC > 0:
+            mhc_improvement = (self.previous_MHC - self.MHC) / max(self.previous_MHC, self.MHC)
+        
+        # 计算约束违反惩罚 - 基于横纵比的约束
+        aspect_ratio_violations = np.sum(
+            (self.fac_aspect_ratio < 1) | (self.fac_aspect_ratio > self.fac_limit_aspect)
+        ) / self.n  # 归一化到[0, 1]范围
+        constraint_penalty = -aspect_ratio_violations * 0.5  # 轻微惩罚
+        
+        # 奖励动作选择的多样性 - 避免相同动作的重复选择
+        action_diversity_bonus = 0.0
+        if hasattr(self, 'previous_action') and self.previous_action != self.current_action:
+            action_diversity_bonus = 0.05  # 小额奖励不同动作
+        
+        # 综合奖励计算
         reward = (
-            # 0.4 * mhc_improvement  # MHC改善权重
-            1 * fitness_improvement  # 整体fitness改善权重
-            # + 0.2 * aspect_ratio_penalty  # 约束违反惩罚权重
+            0.7 * fitness_improvement  # 适应度改善的权重
+            + 0.2 * mhc_improvement    # MHC改善的权重
+            + constraint_penalty       # 约束惩罚
+            + action_diversity_bonus   # 动作多样性奖励
         )
-        # reward = -self.fitness
-        # 适应度和MHC的惩罚
-        # reward = self.MHC - self.fitness
+        
+        # 对reward进行裁剪，避免过大的奖励
+        reward = np.clip(reward, -1.0, 1.0)
+        
         return reward
 
     def calculate_reward_2(self):
         return -self.fitness
 
     def step(self, action):
+        # 保存上一个动作
+        self.previous_action = getattr(self, 'current_action', None)
+        self.current_action = action
+        
         # 根据action执行相应的操作
         action_name = self.actions[int(action)]
         # if action_name == "facility_swap_single":
@@ -240,11 +271,27 @@ class FBSEnv(gym.Env):
             # 边框颜色表示长宽比状态
             line_color = "red" if self.fac_aspect_ratio[facility_idx] > self.fac_limit_aspect else "green"
             
-            # 填充颜色表示成本（RGB）
-            state_reshaped = self.state.reshape(self.n, 3)
-            R = state_reshaped[facility_idx, 0] / 255
-            G = state_reshaped[facility_idx, 1] / 255
-            B = state_reshaped[facility_idx, 2] / 255
+            # 获取设施的状态特征
+            permutation = np.array(self.fbs_model.permutation)
+            sources = np.sum(self.TM, axis=1)
+            sinks = np.sum(self.TM, axis=0)
+            
+            # 归一化为RGB值
+            if np.max(permutation) != np.min(permutation):
+                R = (permutation[i] - np.min(permutation)) / (np.max(permutation) - np.min(permutation))
+            else:
+                R = 0.5
+                
+            if np.max(sources) != np.min(sources):
+                G = (sources[facility_idx] - np.min(sources)) / (np.max(sources) - np.min(sources))
+            else:
+                G = 0.5
+                
+            if np.max(sinks) != np.min(sinks):
+                B = (sinks[facility_idx] - np.min(sinks)) / (np.max(sinks) - np.min(sinks))
+            else:
+                B = 0.5
+                
             face_color = (R, G, B, 0.7)
 
             rect = patches.Rectangle(
@@ -273,28 +320,49 @@ class FBSEnv(gym.Env):
 
         plt.show()
     def constructState(self):
-        state = np.zeros((self.n, 3))
-        permutation = self.fbs_model.permutation
-        TM = self.TM
-        sources = np.sum(TM, axis=1)
-        sinks = np.sum(TM, axis=0) 
-        R = np.array(
-            ((permutation - np.min(permutation)) / (np.max(permutation) - np.min(permutation)))
-            * 255
-        ).astype(np.uint8)
-        G = np.array(
-            ((sources - np.min(sources)) / (np.max(sources) - np.min(sources)))
-            * 255
-        ).astype(np.uint8)
-        B = np.array(
-            ((sinks - np.min(sinks)) / (np.max(sinks) - np.min(sinks)))
-            * 255
-        ).astype(np.uint8)
-        # 白色
-        # R = np.ones(self.n) * 255
-        # G = np.ones(self.n) * 255
-        # B = np.ones(self.n) * 255
-        state[:, 0] = R
-        state[:, 1] = G
-        state[:, 2] = B
-        return state.flatten()
+        """
+        构建适合MLP处理的1D状态表示
+        """
+        # 提取设施相关数据
+        permutation = np.array(self.fbs_model.permutation)
+        sources = np.sum(self.TM, axis=1)
+        sinks = np.sum(self.TM, axis=0)
+        
+        # 归一化为0-1范围
+        if np.max(permutation) != np.min(permutation):
+            norm_permutation = (permutation - np.min(permutation)) / (np.max(permutation) - np.min(permutation))
+        else:
+            norm_permutation = np.ones(self.n) * 0.5
+            
+        if np.max(sources) != np.min(sources):
+            norm_sources = (sources - np.min(sources)) / (np.max(sources) - np.min(sources))
+        else:
+            norm_sources = np.ones(self.n) * 0.5
+            
+        if np.max(sinks) != np.min(sinks):
+            norm_sinks = (sinks - np.min(sinks)) / (np.max(sinks) - np.min(sinks))
+        else:
+            norm_sinks = np.ones(self.n) * 0.5
+            
+        # 将坐标、尺寸和流量数据合并为一维数组
+        state_components = [
+            norm_permutation,  # 设施ID
+            self.fac_x / self.W,  # 归一化x坐标
+            self.fac_y / self.H,  # 归一化y坐标
+            self.fac_b / self.W,  # 归一化宽度
+            self.fac_h / self.H,  # 归一化高度
+            norm_sources,  # 归一化源流量
+            norm_sinks,  # 归一化汇流量
+            self.fac_aspect_ratio / self.fac_limit_aspect  # 归一化横纵比
+        ]
+        
+        # 合并为一维状态向量
+        state_vector = np.concatenate(state_components)
+        
+        # 确保observation_space匹配
+        if hasattr(self, 'observation_space') and self.observation_space.shape != (len(state_vector),):
+            self.observation_space = spaces.Box(
+                low=0, high=1, shape=(len(state_vector),), dtype=np.float32
+            )
+        
+        return state_vector.astype(np.float32)
