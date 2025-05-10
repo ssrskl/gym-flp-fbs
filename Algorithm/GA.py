@@ -340,17 +340,17 @@ if __name__ == "__main__":
     logger.info(f"使用设备: {device}")
     
     # 实验参数
-    exp_instance = "O7-maoyan"
+    exp_instance = "AB20-ar3"
     exp_algorithm = "RL+遗传算法"
-    exp_remark = "CNN-包含修复动作算子-K分初始解v3"
-    exp_number = 30  # 运行次数
-    is_exp = False  # 是否进行实验
+    exp_remark = "K分初始解v3-奖励函数v1"
+    exp_number = 20  # 运行次数
+    is_exp = True  # 是否进行实验
     
     # 算法参数
     population_size = 50
     crossover_rate = 0.8
     mutation_rate = 0.1
-    max_generations = 7 * 10  # 最大迭代次数
+    max_generations = 30 * 10  # 最大迭代次数
     dqn_train_freq = 4  # DQN训练频率
     dqn_learning_starts = 1000  # DQN开始学习的步数
     

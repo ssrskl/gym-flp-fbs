@@ -230,7 +230,7 @@ class FBSEnv(gym.Env):
         # 更新状态字典
         self.state = self.constructState()
         # 计算奖励函数
-        reward = self.calculate_reward_1()
+        reward = self.calculate_reward_2()
         self.previous_fitness = self.fitness
         # 更新info字典，包含更多的调试信息
         info = {
@@ -299,7 +299,9 @@ class FBSEnv(gym.Env):
                 width=x_to - x_from,
                 height=y_to - y_from,
                 edgecolor=line_color,
-                facecolor=face_color,  # 填充颜色
+                # facecolor=face_color,  # 填充颜色
+                # 填充白色
+                facecolor= "white",  
                 linewidth=1
             )
             ax.add_patch(rect)
@@ -311,7 +313,8 @@ class FBSEnv(gym.Env):
                 f"{int(facility_label)}",
                 ha="center",
                 va="center",
-                color="white" if np.mean(face_color[:3]) < 0.5 else "black"  # 自适应文字颜色
+                # color="white" if np.mean(face_color[:3]) < 0.5 else "black"  # 自适应文字颜色
+                color="black"  # 文字颜色
             )
 
         # 显示MHC和Fitness

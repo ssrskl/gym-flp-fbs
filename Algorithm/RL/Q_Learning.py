@@ -20,8 +20,10 @@ class QLearningAgent():
     def train(self, s, a, r, s_next, dw):
         '''Update Q table'''
         Q_sa = self.Q[s, a]
+        self.Q[s, a] = (1-self.lr) * Q_sa + self.lr * (r +   self.gamma * np.max(self.Q[s_next, :]))
         target_Q = r + (1 - dw) * self.gamma * np.max(self.Q[s_next, :])
         self.Q[s, a] += self.lr * (target_Q - Q_sa)
+
     def save(self):
         '''save Q table'''
         npy_file = 'model/q_table.npy'

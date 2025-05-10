@@ -144,7 +144,7 @@ def getAreaData(
 
     areas = get_column_data(df, "Area")
     aspects = get_column_data(df, "Aspect")
-    aspects = aspects[0] if aspects is not None else 99
+    aspects = aspects[0] if aspects is not None else 5
     return areas, aspects
 
 

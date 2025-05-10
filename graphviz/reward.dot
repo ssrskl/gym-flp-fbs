@@ -1,0 +1,35 @@
+digraph RewardCalculation {
+rankdir=TB
+node [shape=rectangle, style="rounded", fontname="Arial"]
+edge [fontname="Arial"]
+start [label="开始计算奖励", shape=ellipse, color="#4CAF50", fillcolor="#C8E6C9", style=filled]
+end [label="返回裁剪后奖励", shape=ellipse, color="#F44336", fillcolor="#FFCDD2", style=filled]
+subgraph cluster_factors {
+label="核心计算因素"
+style="dashed"
+color="#2196F3"
+fitness_node [label="计算适应度改善 \n (归一化到 [-1,1] 范围)", fillcolor="#E3F2FD"]
+mhc_node [label="计算 MHC 改善 \n (条件判断历史值)", fillcolor="#E1BEE7"]
+constraint_node [label="计算约束惩罚 \n (横纵比违规统计)", fillcolor="#FFCCBC"]
+diversity_node [label="动作多样性奖励 \n (检测动作变化)", fillcolor="#DCEDC8"]
+}
+subgraph cluster_integration {
+label="综合奖励计算"
+style="filled"
+fillcolor="#FFF9C4"
+weight_node [label="加权求和 \n (权重分配：0.7/0.2)", shape=hexagon]
+clip_node [label="奖励裁剪 \n (np.clip 到 [-1,1] 范围)", shape=parallelogram]
+}
+start -> fitness_node
+fitness_node -> mhc_node [label="历史值存在判断"]
+mhc_node -> constraint_node [label="统计违规设施"]
+constraint_node -> diversity_node [label="检测动作变化"]
+diversity_node -> weight_node [label="传递参数"]
+weight_node -> clip_node [label="初步计算结果"]
+clip_node -> end
+// 横向关联关系
+fitness_node -> weight_node [style=dotted, color="#9E9E9E", label="权重 0.7"]
+mhc_node -> weight_node [style=dotted, color="#9E9E9E", label="权重 0.2"]
+constraint_node -> weight_node [style=dotted, color="#9E9E9E", label="直接相加"]
+diversity_node -> weight_node [style=dotted, color="#9E9E9E", label="奖励 0.05"]
+}
