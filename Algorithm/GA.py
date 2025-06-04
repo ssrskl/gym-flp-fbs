@@ -63,9 +63,11 @@ class GeneticAlgorithm:
         crossover_rate=0.8,
         mutation_rate=0.1,
         max_generations=100,
-        dqn_train_freq=4,
+        dqn_train_freq=1,
         dqn_learning_starts=1000,
-        device="auto"
+        device="auto",
+        is_train=True,
+        model_path=None
     ):
         """
         初始化遗传算法参数
@@ -83,26 +85,30 @@ class GeneticAlgorithm:
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
         self.max_generations = max_generations
-        
-        # 初始化DQN模型，使用MLP策略而非CNN策略
-        self.dqn_model = DQN(
-            "MlpPolicy",  # 使用MLP策略
-            env,
+        self.is_train = is_train
+        if is_train:
+            self.dqn_model = DQN(
+                "MlpPolicy",  # 使用MLP策略
+                env,
             policy_kwargs=dict(
-                net_arch=[256, 256, 128],  # 网络结构
+                net_arch=[512, 256, 256, 128],  # 网络结构
                 activation_fn=nn.ReLU
             ),
             verbose=0,
-            learning_rate=1e-3,
-            buffer_size=50000,  # 缓冲区大小
+            learning_rate=5e-4,
+            buffer_size=200000,  # 缓冲区大小
             learning_starts=dqn_learning_starts,
             batch_size=64,  # 批次大小
             train_freq=dqn_train_freq,
-            gradient_steps=8,  # 梯度步数
+            gradient_steps=32,  # 梯度步数
             target_update_interval=1000,  # 目标网络更新频率
-            exploration_fraction=0.2,  # 探索率衰减
+            exploration_fraction=0.1,  # 探索率衰减
+            exploration_initial_eps=1.0,  # 初始探索率
+            exploration_final_eps=0.05,  # 最终探索率
             device=device  # 指定训练设备
-        )
+            )
+        else:
+            self.dqn_model = DQN.load(model_path, env=env)
         self.population = self.initialize_population()
 
     def initialize_population(self):
@@ -164,27 +170,22 @@ class GeneticAlgorithm:
             try:
                 # 获取原始状态，确保形状正确
                 original_state = individual.state
-                
                 # 使用DQN模型预测动作
                 action, _ = self.dqn_model.predict(original_state, deterministic=False)
-                
                 # 执行变异操作
                 new_state, reward, done, info = individual.step(action)
-                
-                # 记录经验但不添加到回放缓冲区，避免形状不匹配问题
-                
-                # 直接训练DQN模型
-                if (self.dqn_model.num_timesteps > self.dqn_model.learning_starts and 
-                    self.dqn_model.num_timesteps % 50 == 0):
+                if self.is_train:
+                    # 直接训练DQN模型
+                    if (self.dqn_model.num_timesteps > self.dqn_model.learning_starts and 
+                        self.dqn_model.num_timesteps % 10 == 0):
                     # 使用随机样本训练，而不是依赖具体的回放缓冲区
-                    self.dqn_model.learn(gradient_steps=8, batch_size=32)
-                    
+                        self.dqn_model.learn(gradient_steps=32, batch_size=64)
             except Exception as e:
                 logger.error(f"RL变异操作发生错误: {e}")
                 # 失败时回退到普通变异
                 individual = self.mutate(individual)
-        
         return individual
+
     def mutate(self, individual):
         """
         变异操作：
@@ -197,7 +198,6 @@ class GeneticAlgorithm:
             return individual
         else:
             return individual
-        
 
     # TODO 修复局部优化问题
     def local_optimize(self, individual):
@@ -242,18 +242,12 @@ class GeneticAlgorithm:
                 parent1 = self.select()
                 parent2 = self.select()
                 child1, child2 = self.crossover(parent1, parent2)
-                child1 = self.mutate(child1)  # 使用普通变异替代RL变异
-                child2 = self.mutate(child2)  # 使用普通变异替代RL变异
+                # child1 = self.mutate(child1)  # 使用普通变异替代RL变异
+                # child2 = self.mutate(child2)  # 使用普通变异替代RL变异
+                child1 = self.rl_mutate(child1)
+                child2 = self.rl_mutate(child2)
                 new_population.extend([child1, child2])
             self.population = new_population[: self.population_size]  # 更新种群
-
-            # 对最佳个体进行局部优化
-            best_individual = min(self.population, key=lambda ind: self.evaluate_fitness(ind))
-            # optimized_individual = self.local_optimize(best_individual)
-            # # 替换种群中最差个体
-            # worst_index = np.argmax(fitness_values)
-            # self.population[worst_index] = optimized_individual
-
             # 评估当前种群最佳解
             current_best = min(self.population, key=lambda ind: self.evaluate_fitness(ind))
             current_best_fitness = self.evaluate_fitness(current_best)
@@ -264,21 +258,23 @@ class GeneticAlgorithm:
                 best_generation = generation
                 fast_time = datetime.datetime.now()
                 best_time = (fast_time - start_time).total_seconds()  # 记录从开始到获得最佳解的时间(秒)
-                
-                # 每当找到更好的解时，保存DQN模型
-                model_path = f"models/dqn_model_gen_{generation}_fitness_{best_fitness:.2f}"
-                logger.info(f"保存DQN模型到: {model_path}")
-                self.dqn_model.save(model_path)
+                if self.is_train:
+                    # 每当找到更好的解时，保存DQN模型
+                    model_path = f"models/{self.env.instance}_dqn_model_gen_{generation}_fitness_{best_fitness:.2f}"
+                    logger.info(f"保存DQN模型到: {model_path}")
+                    self.dqn_model.save(model_path)
+                else:
+                    logger.info(f"第{generation}代，最佳适应度: {best_fitness}")
                 
             if generation % 10 == 0:
                 logger.info(f"Generation {generation}, Best Fitness: {best_fitness}")
 
         end_time = datetime.datetime.now()
-        
-        # 最终保存DQN模型
-        final_model_path = "models/dqn_model_final"
-        logger.info(f"保存最终DQN模型到: {final_model_path}")
-        self.dqn_model.save(final_model_path)
+        if self.is_train:   
+            # 最终保存DQN模型
+            final_model_path = f"models/{self.env.instance}_dqn_model_final"
+            logger.info(f"保存最终DQN模型到: {final_model_path}")
+            self.dqn_model.save(final_model_path)
         
         # 记录训练相关信息
         logger.info(f"最佳适应度: {best_fitness}, 在第 {best_generation} 代获得")
@@ -286,48 +282,6 @@ class GeneticAlgorithm:
         logger.info(f"获得最佳解用时: {best_time} 秒")
         
         return best_solution, best_fitness, start_time, end_time, fast_time, best_time
-
-    def constructState(self):
-        """
-        构建适合MLP处理的1D状态表示
-        """
-        # 提取设施相关数据
-        permutation = np.array(self.env.fbs_model.permutation)
-        sources = np.sum(self.env.TM, axis=1)
-        sinks = np.sum(self.env.TM, axis=0)
-        
-        # 归一化为0-1范围
-        if np.max(permutation) != np.min(permutation):
-            norm_permutation = (permutation - np.min(permutation)) / (np.max(permutation) - np.min(permutation))
-        else:
-            norm_permutation = np.ones(self.env.n) * 0.5
-            
-        if np.max(sources) != np.min(sources):
-            norm_sources = (sources - np.min(sources)) / (np.max(sources) - np.min(sources))
-        else:
-            norm_sources = np.ones(self.env.n) * 0.5
-            
-        if np.max(sinks) != np.min(sinks):
-            norm_sinks = (sinks - np.min(sinks)) / (np.max(sinks) - np.min(sinks))
-        else:
-            norm_sinks = np.ones(self.env.n) * 0.5
-            
-        # 将坐标、尺寸和流量数据合并为一维数组
-        state_components = [
-            norm_permutation,  # 设施ID
-            self.env.fac_x / self.env.W,  # 归一化x坐标
-            self.env.fac_y / self.env.H,  # 归一化y坐标
-            self.env.fac_b / self.env.W,  # 归一化宽度
-            self.env.fac_h / self.env.H,  # 归一化高度
-            norm_sources,  # 归一化源流量
-            norm_sinks,  # 归一化汇流量
-            self.env.fac_aspect_ratio / self.env.fac_limit_aspect  # 归一化横纵比
-        ]
-        
-        # 合并为一维状态向量
-        state_vector = np.concatenate(state_components)
-        
-        return state_vector.astype(np.float32)
 
 if __name__ == "__main__":
     # 检查可用的设备
@@ -338,19 +292,19 @@ if __name__ == "__main__":
     else:
         device = "cpu"
     logger.info(f"使用设备: {device}")
-    
     # 实验参数
-    exp_instance = "AB20-ar3"
+    exp_instance = "Du62"
     exp_algorithm = "RL+遗传算法"
-    exp_remark = "K分初始解v3-奖励函数v1"
+    exp_remark = "K分初始解v3-奖励函数v1-训练"
     exp_number = 20  # 运行次数
-    is_exp = True  # 是否进行实验
-    
+    is_exp = False  # 是否进行实验
+    is_train = True  # 是否进行训练
+    model_path = "models/O9-maoyan_dqn_model_final"  # 模型路径
     # 算法参数
     population_size = 50
     crossover_rate = 0.8
     mutation_rate = 0.1
-    max_generations = 30 * 10  # 最大迭代次数
+    max_generations = 62 * 100  # 最大迭代次数
     dqn_train_freq = 4  # DQN训练频率
     dqn_learning_starts = 1000  # DQN开始学习的步数
     
@@ -364,7 +318,9 @@ if __name__ == "__main__":
         max_generations=max_generations,
         dqn_train_freq=dqn_train_freq,
         dqn_learning_starts=dqn_learning_starts,
-        device=device
+        device=device,
+        is_train=is_train,
+        model_path=model_path
     )
     if is_exp:
         for i in range(exp_number):
@@ -378,7 +334,9 @@ if __name__ == "__main__":
                 max_generations=max_generations,
                 dqn_train_freq=dqn_train_freq,
                 dqn_learning_starts=dqn_learning_starts,
-                device=device
+                device=device,
+                is_train=is_train,
+                model_path=model_path
             )
             best_solution, best_fitness, exp_start_time, exp_end_time, exp_fast_time, best_time = ga.run()
             print(f"Best Solution: {best_solution.array_2d}, Best Fitness: {best_fitness}")
